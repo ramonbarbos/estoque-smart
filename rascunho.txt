@@ -1,0 +1,6 @@
+host   = "127.0.0.1:3306"
+name   = "u232862127_sge"
+user   = "u232862127_root"
+pass   = "Ramon@21"
+type   = "mysql"
+prep   = "1"
