@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<menu>
+  <menuitem label="Produto">
+    <icon>fas:box-open fa-fw fa-fw</icon>
+    <menu>
+      <menuitem label="Cadastro">
+        <action>ProdutoList</action>
+        <icon>fa fa fa-fw fa-fw</icon>
+      </menuitem>
+    </menu>
+  </menuitem>
+  <menuitem label="Movimentação">
+    <icon>fas:truck-moving fa-fw fa-fw</icon>
+    <menu>
+      <menuitem label="Mapa de Estoque">
+        <action>EstoqueList</action>
+        <icon>fa fa fa-fw fa-fw</icon>
+      </menuitem>
+      <menuitem label="Entrada">
+        <action>EntradaList</action>
+        <icon>fa fa fa-fw fa-fw</icon>
+      </menuitem>
+      <menuitem label="Saida">
+        <action>SaidaList</action>
+        <icon>fa fa fa-fw fa-fw</icon>
+      </menuitem>
+      <menuitem label="Devolução Fornecedor">
+        <action>RetornoFornecedorList</action>
+        <icon>fa fa fa-fw fa-fw</icon>
+      </menuitem>
+      <menuitem label="Devolução Cliente">
+        <action>RetornoClienteList</action>
+        <icon>fa fa fa-fw fa-fw</icon>
+      </menuitem>
+    </menu>
+  </menuitem>
+  <menuitem label="Relatorios">
+    <icon>fas:folder-open fa-fw fa-fw</icon>
+    <menu>
+      <menuitem label="Relatorio do Estoque">
+        <action>EstoqueRelatorio</action>
+        <icon>fa fa fa-fw fa-fw</icon>
+      </menuitem>
+    </menu>
+  </menuitem>
+  <menuitem label="Ajustes">
+    <icon>fas:cog fa-fw</icon>
+    <menu>
+      <menuitem label="Fornecedor">
+        <action>FornecedorList</action>
+        <icon>fa fa fa-fw fa-fw</icon>
+      </menuitem>
+      <menuitem label="Cliente">
+        <action>ClienteList</action>
+        <icon>fa fa fa-fw fa-fw</icon>
+      </menuitem>
+      <menuitem label="Tipo Entrada">
+        <action>TPEntradaList</action>
+        <icon>fa fa fa-fw fa-fw</icon>
+      </menuitem>
+      <menuitem label="Tipo Saida">
+        <action>TPSaidaList</action>
+        <icon>fa fa fa-fw fa-fw</icon>
+      </menuitem>
+    </menu>
+  </menuitem>
+  <menuitem label="_t{Administration}">
+    <icon>fas:home fa-fw</icon>
+    <menu>
+      <menuitem label="Dashboard">
+        <action>SystemAdministrationDashboard</action>
+        <icon>fas:tachometer-alt fa-fw</icon>
+      </menuitem>
+      <menuitem label="_t{Programs}">
+        <action>SystemProgramList</action>
+        <icon>far:file-code fa-fw</icon>
+      </menuitem>
+      <menuitem label="_t{Groups}">
+        <action>SystemGroupList</action>
+        <icon>fas:users fa-fw</icon>
+      </menuitem>
+      <menuitem label="_t{Units}">
+        <action>SystemUnitList</action>
+        <icon>fas:university fa-fw</icon>
+      </menuitem>
+      <menuitem label="_t{Users}">
+        <action>SystemUserList</action>
+        <icon>fas:user fa-fw</icon>
+      </menuitem>
+      <menuitem label="_t{Contacts}">
+        <action>SystemContactsList</action>
+        <icon>far:address-card fa-fw</icon>
+      </menuitem>
+      <menuitem label="_t{Database explorer}">
+        <action>SystemDatabaseExplorer</action>
+        <icon>fas:database fa-fw</icon>
+      </menuitem>
+      <menuitem label="_t{SQL Panel}">
+        <action>SystemSQLPanel</action>
+        <icon>fas:table fa-fw</icon>
+      </menuitem>
+      <menuitem label="_t{Menu editor}">
+        <action>SystemMenuEditor</action>
+        <icon>far:edit fa-fw</icon>
+      </menuitem>
+      <menuitem label="_t{Files diff}">
+        <action>SystemFilesDiff</action>
+        <icon>fas:file-medical-alt fa-fw</icon>
+      </menuitem>
+      <menuitem label="PHP Info">
+        <action>SystemPHPInfoView</action>
+        <icon>fas:info-circle fa-fw</icon>
+      </menuitem>
+      <menuitem label="System Information">
+        <action>SystemInformationView</action>
+        <icon>fas:desktop fa-fw</icon>
+      </menuitem>
+      <menuitem label="_t{Preferences}">
+        <action>SystemPreferenceForm#method=onEdit</action>
+        <icon>fas:cog fa-fw</icon>
+      </menuitem>
+    </menu>
+  </menuitem>
+  <menuitem label="Logs">
+    <icon>fas:desktop fa-fw</icon>
+    <menu>
+      <menuitem label="Dashboard">
+        <action>SystemLogDashboard</action>
+        <icon>fas:tachometer-alt fa-fw</icon>
+      </menuitem>
+      <menuitem label="_t{Access Log}">
+        <action>SystemAccessLogList</action>
+        <icon>fas:key fa-fw</icon>
+      </menuitem>
+      <menuitem label="_t{Change Log}">
+        <action>SystemChangeLogView</action>
+        <icon>fas:film fa-fw</icon>
+      </menuitem>
+      <menuitem label="_t{SQL Log}">
+        <action>SystemSqlLogList</action>
+        <icon>fas:database fa-fw</icon>
+      </menuitem>
+      <menuitem label="_t{Request Log}">
+        <action>SystemRequestLogList</action>
+        <icon>fas:globe fa-fw</icon>
+      </menuitem>
+      <menuitem label="_t{PHP Log}">
+        <action>SystemPHPErrorLogView</action>
+        <icon>fas:exclamation-triangle fa-fw</icon>
+      </menuitem>
+      <menuitem label="Session dump">
+        <action>SystemSessionDumpView</action>
+        <icon>fas:code fa-fw</icon>
+      </menuitem>
+    </menu>
+  </menuitem>
+  <menuitem label="Logout">
+    <action>LoginForm#method=onLogout#static=1</action>
+    <icon>fas:sign-out-alt fa-fw</icon>
+  </menuitem>
+</menu>
