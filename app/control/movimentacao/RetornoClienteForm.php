@@ -57,19 +57,19 @@ class RetornoClienteForm extends TPage
 
         try {
             TTransaction::open('sample');
-        
-                $criteria = new TCriteria;
-                $criteria->add(new TFilter('quant_retirada', '>', 0));
-                $criteria->setProperty('order', 'id');
-                // Use o critério para buscar os registros do banco de dados
-                $repository = new TRepository('Saida');
-                $items = $repository->load($criteria);
 
-                // Crie um array de itens no formato chave-valor
-                $options = [];
-                foreach ($items as $item) {
-                    $options[$item->id] = $item->id;
-                }
+            $criteria = new TCriteria;
+            $criteria->add(new TFilter('quant_retirada', '>', 0));
+            $criteria->setProperty('order', 'id');
+            // Use o critério para buscar os registros do banco de dados
+            $repository = new TRepository('Saida');
+            $items = $repository->load($criteria);
+
+            // Crie um array de itens no formato chave-valor
+            $options = [];
+            foreach ($items as $item) {
+                $options[$item->id] = $item->id;
+            }
 
             TTransaction::close(); // Feche a transação quando terminar
         } catch (Exception $e) {
@@ -78,7 +78,7 @@ class RetornoClienteForm extends TPage
             TTransaction::rollback(); // Se ocorrer um erro, faça rollback na transação
         }
 
-        
+
         // Criação de fields
         $id = new TEntry('id');
         $entrada = new TDBCombo('saida_id', 'sample', 'Saida', 'id', 'id');
@@ -101,7 +101,7 @@ class RetornoClienteForm extends TPage
         $valor_disponivel = new TEntry('valor_disponivel');
         $valor_disponivel->setId('form_valor_disponivel');
 
-        $entrada_id = new TEntry('entrada_id');
+        $entrada_id = new TEntry('estoque_id');
         $entrada_id->setId('form_entrada_id');
 
         $motivo = new TText('motivo');
@@ -167,7 +167,7 @@ class RetornoClienteForm extends TPage
         $valor_disponivel->setNumericMask(2, ',', '.', true);
         $valor_disponivel->setValue('0,00');
 
-      //  $valor->setNumericMask(2, ',', '.', true);
+        //  $valor->setNumericMask(2, ',', '.', true);
         $valor->setSize('100%');
         $valor->setValue('0,00');
         $total->setValue('0,00');
@@ -175,7 +175,7 @@ class RetornoClienteForm extends TPage
 
         $motivo->setSize('100%');
 
-       
+
 
         TScript::create('function calcularValorTotal() {
             var quantidadeField = document.getElementById("form_quantidade");
@@ -202,7 +202,7 @@ class RetornoClienteForm extends TPage
             console.log("Valor Total:", numeroFormatado);
             return numeroFormatado;
         }');
-        
+
         // Adicionar botão de salvar
         $btn = $this->form->addAction(_t('Save'), new TAction([$this, 'onSave']), 'fa:plus green');
         $btn->class = 'btn btn-sm btn-primary';
@@ -239,7 +239,7 @@ class RetornoClienteForm extends TPage
                 $produto_nome = $saida->produto->nome;
                 $cliente_id = $saida->cliente_id;
                 $cliente_nome = $saida->cliente->nome;
-                $qtd_disponivel = $saida->quantidade; 
+                $qtd_disponivel = $saida->quantidade;
                 $valor_disponivel = $saida->valor_total; // Suponhamos que o campo no banco de dados se chama "valor"
                 $valor = $saida->preco_unit; // Suponhamos que o campo no banco de dados se chama "valor"
 
@@ -263,42 +263,53 @@ class RetornoClienteForm extends TPage
         }
     }
 
-   
+
 
     public function onSave($param)
     {
         try {
             TTransaction::open('sample');
-    
+
             $retorno = new Retorno_Cliente();
             $retorno->fromArray($param);
-    
+
             $data_retorno = DateTime::createFromFormat('d/m/Y', $retorno->data_retorno);
             if ($data_retorno) {
                 $retorno->data_retorno = $data_retorno->format('Y-m-d');
             }
-    
+
             // Verifique se já existe um registro de estoque correspondente a esta saída
             $mapaEstoque = Estoque::where('saida_id', '=', $retorno->saida_id)->load();
-    
+
             if ($mapaEstoque) {
                 $mapaEstoque = $mapaEstoque[0];
-                    $mapaEstoque->quantidade += $retorno->quantidade;
-                    $mapaEstoque->valor_total = $mapaEstoque->quantidade * $retorno->preco_unit;
-                    $mapaEstoque->quant_retirada += $retorno->quantidade;
-                    $mapaEstoque->updated_at = date('Y-m-d H:i:s');
-                    $mapaEstoque->store();
 
-                    $saida = Saida::where('id', '=', $retorno->saida_id)
+                $valorTotal = $mapaEstoque->valor_total;
+                $QuantidadeTotal = $mapaEstoque->quantidade;
+
+
+                $mapaEstoque->quantidade += $retorno->quantidade;
+                $mapaEstoque->valor_total = $mapaEstoque->quantidade * $retorno->preco_unit;
+                $mapaEstoque->quant_retirada += $retorno->quantidade;
+                $mapaEstoque->updated_at = date('Y-m-d H:i:s');
+                
+
+                $mediaPonderadaEstoque = ($retorno->valor_total + $valorTotal) /( $retorno->quantidade+ $QuantidadeTotal) ;
+                $mapaEstoque->valor_total = $mapaEstoque->quantidade * $mediaPonderadaEstoque;
+                $mapaEstoque->preco_unit = $mediaPonderadaEstoque;
+
+                $mapaEstoque->store();
+
+                $saida = Saida::where('id', '=', $retorno->saida_id)
                     ->first();
-                    $saida->quant_retirada =  $saida->quant_retirada - $retorno->quantidade;
-                    $saida->store();
-    
+                $saida->quant_retirada =  $saida->quant_retirada - $retorno->quantidade;
+                $saida->store();
+
                 // Salve o registro de retorno do cliente
                 $retorno->store();
-    
+
                 TTransaction::close();
-    
+
                 new TMessage('info', AdiantiCoreTranslator::translate('Record saved'), $this->afterSaveAction);
             } else {
                 TTransaction::close();
@@ -309,11 +320,11 @@ class RetornoClienteForm extends TPage
             TTransaction::rollback();
         }
     }
-    private function atualizarEstoque( $saida_id, $quantidadeReposta)
+    private function atualizarEstoque($saida_id, $quantidadeReposta)
     {
         try {
             TTransaction::open('sample');
-    
+
             error_log('Dentro da função atualizarEstoque');
             error_log('saida_id: ' . $saida_id);
             error_log('quantidadeReposta: ' . $quantidadeReposta);
@@ -323,36 +334,33 @@ class RetornoClienteForm extends TPage
 
 
             $entrada = Estoque::where('saida_id', '=', $saida_id)
-            ->first();
-
-                // Calcula a nova quantidade em estoque após a reposição
-                $novaQuantidade = $entrada->quantidade + $quantidadeReposta;
-                $valorReposto = $entrada->preco_unit * $quantidadeReposta;
-                $novoValor = $entrada->valor_total + $valorReposto;
-        
-                
-                // Atualiza a quantidade e o valor total em estoque no objeto
-                $entrada->quantidade = $novaQuantidade;
-                $entrada->valor_total = $novoValor;
-                $entrada->quant_retirada =  $novaQuantidade;
-
-        
-                // Atualiza o registro no banco de dados
-                $entrada->store();
-        
-                $saida = Saida::where('id', '=', $saida_id)
                 ->first();
-                $saida->quant_retirada =  $saida->quant_retirada - $quantidadeReposta;
-                $saida->store();
-                
-                // Atualiza o campo de quantidade disponível no formulário usando JavaScript
-                TScript::create("document.getElementById('form_quantidade_disponivel').value = '{$novaQuantidade}';");
-        
-                TTransaction::close();
-                $this->isAtualizado = true;
-        
 
-            
+            // Calcula a nova quantidade em estoque após a reposição
+            $novaQuantidade = $entrada->quantidade + $quantidadeReposta;
+            $valorReposto = $entrada->preco_unit * $quantidadeReposta;
+            $novoValor = $entrada->valor_total + $valorReposto;
+
+
+            // Atualiza a quantidade e o valor total em estoque no objeto
+            $entrada->quantidade = $novaQuantidade;
+            $entrada->valor_total = $novoValor;
+            $entrada->quant_retirada =  $novaQuantidade;
+
+
+            // Atualiza o registro no banco de dados
+            $entrada->store();
+
+            $saida = Saida::where('id', '=', $saida_id)
+                ->first();
+            $saida->quant_retirada =  $saida->quant_retirada - $quantidadeReposta;
+            $saida->store();
+
+            // Atualiza o campo de quantidade disponível no formulário usando JavaScript
+            TScript::create("document.getElementById('form_quantidade_disponivel').value = '{$novaQuantidade}';");
+
+            TTransaction::close();
+            $this->isAtualizado = true;
         } catch (Exception $e) {
             // Trate a exceção de acordo com suas necessidades
             TTransaction::rollback();

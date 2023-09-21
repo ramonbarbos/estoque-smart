@@ -79,13 +79,17 @@ class RetornoClienteList extends TPage
     $column_qtd = new TDataGridColumn('quantidade', 'Quantidade', 'center');
     $column_preco = new TDataGridColumn('preco_unit', 'Valor Unid.', 'center');
 
+    //$desc->setProperty('style','background:pink');
+    $column_preco->setDataProperty('style','font-weight: bold');
+    $column_preco->setTransformer(array($this, 'formatSalary'));
+
     $column_dt_retorno->setTransformer(function ($value, $object, $row) {
       return date('d/m/Y', strtotime($value));
     });
     $column_preco->setTransformer(function ($value, $object, $row) {
       return 'R$ ' . number_format($value, 2, ',', '.');
     });
-    
+
     //add coluna da datagrid
     $this->datagrid->addColumn($column_id);
     $this->datagrid->addColumn($column_produto);
@@ -144,46 +148,77 @@ class RetornoClienteList extends TPage
     $container->add($panel);
 
     parent::add($container);
-  
+  }
+
+  public function formatSalary($stock, $object, $row)
+  {
+      $number = number_format($stock, 2, ',', '.');
+      if ($stock > 0)
+      {
+          return "<span style='color:blue'>$number</span>";
+      }
+      else
+      {
+          $row->style = "background: #FFF9A7";
+          return "<span style='color:red'>$number</span>";
+      }
   }
 
   public function onDelete($param)
   {
-      if (isset($param['key'])) {
-          // Obtém o ID do estoque a ser excluído
-        
-          new TMessage('error', 'Não é possível excluir, pois o valor foi devolvido ao estoque.');
-          
-          
-          
-      }
+    if (isset($param['key'])) {
+      // Obtém o ID do estoque a ser excluído
+
+      new TMessage('error', 'Não é possível excluir, pois o valor foi devolvido ao estoque.');
+    }
   }
   public function onCancel($param)
   {
-      if (isset($param['key'])) {
-          // Obtém o ID do estoque a ser excluído
+    if (isset($param['key'])) {
+      // Obtém o ID do estoque a ser excluído
+
+
+      $id = $param['key'];
+
+      // Abre uma transação
+      TTransaction::open('sample');
+
+      // Obtém a devolução do cliente pelo ID
+      $devolucao = new Retorno_Cliente($id);
+      if ($devolucao) {
+
+
+        // Verifique se já existe uma entrada no mapa de estoque para esse produto
+        $estoque = Estoque::where('id', '=', $devolucao->estoque_id)->load();
+        $estoque = $estoque[0];
+        $novaQuantidade = $estoque->quantidade - $devolucao->quantidade;
+        $valor_atual = $estoque->valor_total - $devolucao->valor_total  ;
+        $estoque->valor_total = $valor_atual;
+        $estoque->quantidade = $novaQuantidade;
+        $estoque->store();
+        new TMessage('info', $valor_atual);
+        new TMessage('info', $novaQuantidade);
         
-
-          $id = $param['key'];
-
-          // Abre uma transação
+        try {
+          // Exclua o estoque
           TTransaction::open('sample');
+          $object = new Retorno_Cliente($id);
+          $object->delete();
+     
+          TTransaction::close();
 
-          // Obtém a devolução do cliente pelo ID
-          $devolucao = Retorno_Cliente::find($id);
-
-          if($devolucao){
-
-           // $this->updateEstoque($devolucao);
-
-            new TMessage('info', 'Cancelamento de Devolução em produção');
-            $this->onReload();
-          }
-
-          
-          
-          
+          // Recarregue a listagem
+          $this->onReload();
+          new TMessage('info', 'Registro cancelado com sucesso.');
+      } catch (Exception $e) {
+          new TMessage('error', $e->getMessage());
       }
-  }
 
+        
+        $this->onReload();
+      }
+
+      TTransaction::close();
+    }
+  }
 }
