@@ -1,4 +1,5 @@
 <?php
+
 use Adianti\Control\TAction;
 use Adianti\Control\TPage;
 use Adianti\Core\AdiantiCoreApplication;
@@ -50,14 +51,14 @@ class EntradaForm extends TPage
         $this->form->setClientValidation(true);
         $this->form->setColumnClasses(2, ['col-sm-5 col-lg-4', 'col-sm-7 col-lg-8']);
 
-      
+
 
         // Criação de fields
         $id = new TEntry('id');
         $produto = new TDBCombo('produto_id', 'sample', 'Produto', 'id', 'nome');
         $data    = new TDate('data_entrada');
         $data->setId('form_data'); // Defina o ID como 'form_valor_total'
-        
+
         $fornecedor = new TDBCombo('fornecedor_id', 'sample', 'Fornecedor', 'id', 'nome');
         $nf = new TEntry('nota_fiscal');
         $valor       = new TEntry('preco_unit');
@@ -78,7 +79,7 @@ class EntradaForm extends TPage
         $total->setProperty('onkeyup', 'calcularValorTotal()'); // Adicione esta linha
 
 
-        
+
         // Adicione fields ao formulário
         $this->form->addFields([new TLabel('Id')], [$id]);
         $this->form->addFields([new TLabel('Produto')], [$produto]);
@@ -100,7 +101,7 @@ class EntradaForm extends TPage
 
         // Tornar o campo ID não editável
         $id->setEditable(false);
-      
+
         // Tamanho dos campos
         $id->setSize('100%');
         $produto->setSize('100%');
@@ -140,7 +141,7 @@ class EntradaForm extends TPage
             console.log("Valor Total:", numeroFormatado);
             return numeroFormatado;
         }');
-        
+
 
         // Adicionar botão de salvar
         $btn = $this->form->addAction(_t('Save'), new TAction([$this, 'onSave']), 'fa:plus green');
@@ -164,45 +165,54 @@ class EntradaForm extends TPage
     {
         try {
             TTransaction::open('sample');
-    
+
             // Verifica se é uma edição de registro existente
             $isEditingExistingRecord = !empty($param['id']);
-    
+
             // Salvar entrada
             $entrada = new Entrada();
             $entrada->fromArray($param);
             $data_entrada = DateTime::createFromFormat('d/m/Y', $entrada->data_entrada);
-    
+
             if (!$isEditingExistingRecord) {
                 // Apenas defina o created_at se for um novo registro
                 $entrada->created_at = date('Y-m-d H:i:s');
             }
-    
+
             if ($data_entrada) {
                 $entrada->data_entrada = $data_entrada->format('Y-m-d');
             }
-    
+
             $entrada->store();
-    
+
             // Atualizar o mapa de estoque somente se não for uma edição de registro existente
             if (!$isEditingExistingRecord) {
                 $produto_id = $entrada->produto_id;
                 $quantidade = $entrada->quantidade;
                 $valor = $entrada->preco_unit;
-    
+
                 // Verifique se já existe uma entrada no mapa de estoque para esse produto
-                $mapaEstoque = Estoque::where('produto_id', '=', $produto_id)
-                    ->where('preco_unit', '=', $valor)
-                    ->where('nota_fiscal', '=', $entrada->nota_fiscal)
-                    ->load();
-    
+                $mapaEstoque = Estoque::where('produto_id', '=', $produto_id)->load();
+
                 if ($mapaEstoque) {
                     $mapaEstoque = $mapaEstoque[0];
+
+                    $valorTotal = $mapaEstoque->valor_total;
+                    $QuantidadeTotal = $mapaEstoque->quantidade;
+                  
+
                     $mapaEstoque->quantidade += $quantidade;
-                    $mapaEstoque->valor_total = $mapaEstoque->quantidade * $valor;
                     $mapaEstoque->quant_retirada += $quantidade;
                     $mapaEstoque->updated_at = date('Y-m-d H:i:s');
+
+                    $mediaPonderadaEstoque = ($entrada->valor_total + $valorTotal) /( $quantidade+ $QuantidadeTotal) ;
+                    $mapaEstoque->valor_total = $mapaEstoque->quantidade * $mediaPonderadaEstoque;
+                    $mapaEstoque->preco_unit = $mediaPonderadaEstoque;
                     $mapaEstoque->store();
+
+                     new TMessage('info', $mediaPonderadaEstoque );
+                    
+                   
                 } else {
                     $mapaEstoque = new Estoque();
                     $mapaEstoque->produto_id = $entrada->produto_id;
@@ -217,7 +227,7 @@ class EntradaForm extends TPage
                     $mapaEstoque->store();
                 }
             }
-    
+
             TTransaction::close();
             new TMessage('info', AdiantiCoreTranslator::translate('Record saved'), $this->afterSaveAction);
         } catch (Exception $e) {
@@ -225,7 +235,7 @@ class EntradaForm extends TPage
             TTransaction::rollback();
         }
     }
-    
+
 
 
     public  function onEdit($param)
@@ -251,7 +261,7 @@ class EntradaForm extends TPage
                 $dataField = $this->form->getField('data_entrada');
                 $dataField->setMask('dd/mm/yyyy');
 
-                   // Verifique se o formulário está em modo de edição
+                // Verifique se o formulário está em modo de edição
                 if (!$this->isAtualizado) {
                     // Execute o cálculo apenas se o formulário não tiver sido atualizado antes
                     TScript::create("document.getElementById('form_data').value = '{$data}';");
