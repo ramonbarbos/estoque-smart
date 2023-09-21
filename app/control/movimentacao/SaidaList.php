@@ -179,6 +179,9 @@ class SaidaList extends TPage
                     new TMessage('error', $e->getMessage());
                 }
             }
+          }else{
+             // Lida com o caso em que o $estoque é nulo
+             new TMessage('error', 'Baixa não encontrada.');
           }
           
       }

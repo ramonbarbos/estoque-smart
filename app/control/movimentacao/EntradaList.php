@@ -156,28 +156,44 @@ class EntradaList extends TPage
         try {
             if (isset($param['key'])) {
                 // Obtém o ID do estoque a ser excluído
-                
+
                 $id = $param['key'];
+
 
 
                 TTransaction::open('sample');
                 $estoque = Estoque::where('entrada_id', '=', $id)
                     ->first();
-                $estoque_id =  $estoque->id;
 
-                // Verifica se existem saídas relacionadas a este estoque
-                if ($this->hasRelatedOutbound($estoque_id)) {
-                    new TMessage('error', 'Não é possível excluir este estoque, pois existem vinculações.');
+                if ($estoque) {
+
+                    $estoque_id = $estoque->id;
+                    // Verifica se existem saídas relacionadas a este estoque
+                    if ($this->hasRelatedOutbound($estoque_id)) {
+                        new TMessage('error', 'Não é possível excluir este estoque, pois existem vinculações.');
+                    } else {
+                        try {
+                            // Exclua o estoque
+                            TTransaction::open('sample');
+                            $object = new Entrada($id);
+                            $object->delete();
+                            $object = new Estoque($estoque_id);
+                            $object->delete();
+                            TTransaction::close();
+
+                            // Recarregue a listagem
+                            $this->onReload();
+                            new TMessage('info', 'Registro excluído com sucesso.', $this->afterSaveAction);
+                        } catch (Exception $e) {
+                            new TMessage('error', $e->getMessage());
+                        }
+                    }
                 } else {
                     try {
-                        // Exclua o estoque
                         TTransaction::open('sample');
                         $object = new Entrada($id);
                         $object->delete();
-                        $object = new Estoque($estoque_id);
-                        $object->delete();
                         TTransaction::close();
-
                         // Recarregue a listagem
                         $this->onReload();
                         new TMessage('info', 'Registro excluído com sucesso.', $this->afterSaveAction);
