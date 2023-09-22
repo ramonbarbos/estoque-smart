@@ -150,60 +150,66 @@ class SaidaList extends TPage
 
   public function onDelete($param)
   {
-      if (isset($param['key'])) {
-          // Obtém o ID do estoque a ser excluído
-          $id = $param['key']; //ID da saida
-  
-          TTransaction::open('sample'); 
-          $retorno = Retorno_Cliente::where('saida_id', '=', $id)
-                      ->first();
-          if($retorno){
-            $retorno_id =  $retorno->id;     
-  
-            // Verifica se existem saídas relacionadas a este estoque
-            if ($this->hasRelatedOutbound($retorno_id)) {
-                new TMessage('error', 'Não é possível excluir esta saida, pois existem vinculações.');
-            } else {
-                try {
-                    // Exclua o estoque
-                    TTransaction::open('sample');
-                    $object = new Saida($id);
-                    $object->delete();
-               
-                    TTransaction::close();
-    
-                    // Recarregue a listagem
-                    $this->onReload();
-                    new TMessage('info', 'Registro excluído com sucesso.');
-                } catch (Exception $e) {
-                    new TMessage('error', $e->getMessage());
-                }
-            }
-          }else{
-             // Lida com o caso em que o $estoque é nulo
-             new TMessage('error', 'Baixa não encontrada.');
+    if (isset($param['key'])) {
+      // Obtém o ID do estoque a ser excluído
+      $id = $param['key']; //ID da saida
+
+      TTransaction::open('sample');
+      $retorno = Retorno_Cliente::where('saida_id', '=', $id)
+        ->first();
+      if ($retorno) {
+        $retorno_id =  $retorno->id;
+
+        // Verifica se existem saídas relacionadas a este estoque
+        if ($this->hasRelatedOutbound($retorno_id)) {
+          new TMessage('error', 'Não é possível excluir esta saida, pois existem vinculações.');
+        } else {
+          try {
+            // Exclua o estoque
+            TTransaction::open('sample');
+            $object = new Saida($id);
+            $object->delete();
+
+            TTransaction::close();
+
+            // Recarregue a listagem
+            $this->onReload();
+            new TMessage('info', 'Registro excluído com sucesso.');
+          } catch (Exception $e) {
+            new TMessage('error', $e->getMessage());
           }
-          
+        }
+      } else {
+        // Exclua o estoque
+        TTransaction::open('sample');
+        $object = new Saida($id);
+        $object->delete();
+
+        TTransaction::close();
+
+        // Recarregue a listagem
+        $this->onReload();
       }
+    }
   }
-  
+
   private function hasRelatedOutbound($id)
   {
-      try {
-          // Verifique se há saídas relacionadas a este estoque
-          TTransaction::open('sample');
-          $criteria = new TCriteria;
-          $criteria->add(new TFilter('id', '=', $id));
-          $repository = new TRepository('Retorno_Cliente');
-          $count = $repository->count($criteria);
-          TTransaction::close();
-  
-          // Se houver saídas relacionadas, retorne true
-          return $count > 0;
-      } catch (Exception $e) {
-          // Em caso de erro, trate-o de acordo com suas necessidades
-          new TMessage('error', $e->getMessage());
-          return false;
-      }
+    try {
+      // Verifique se há saídas relacionadas a este estoque
+      TTransaction::open('sample');
+      $criteria = new TCriteria;
+      $criteria->add(new TFilter('id', '=', $id));
+      $repository = new TRepository('Retorno_Cliente');
+      $count = $repository->count($criteria);
+      TTransaction::close();
+
+      // Se houver saídas relacionadas, retorne true
+      return $count > 0;
+    } catch (Exception $e) {
+      // Em caso de erro, trate-o de acordo com suas necessidades
+      new TMessage('error', $e->getMessage());
+      return false;
+    }
   }
 }

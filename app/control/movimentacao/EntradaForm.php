@@ -113,6 +113,7 @@ class EntradaForm extends TPage
         $data->setDatabaseMask('yyyy-mm-dd');
         $nf->setNumericMask(2, '', '', true);
         $valor->setSize('100%');
+        $valor->setNumericMask(2, ',', '.', true);
         //$total->setNumericMask(4, ',', '.', true);
         $total->setSize('100%');
 
