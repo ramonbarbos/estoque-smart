@@ -80,7 +80,7 @@ class RetornoClienteList extends TPage
     $column_preco = new TDataGridColumn('preco_unit', 'Valor Unid.', 'center');
 
     //$desc->setProperty('style','background:pink');
-    $column_preco->setDataProperty('style','font-weight: bold');
+    $column_preco->setDataProperty('style', 'font-weight: bold');
     $column_preco->setTransformer(array($this, 'formatSalary'));
 
     $column_dt_retorno->setTransformer(function ($value, $object, $row) {
@@ -114,7 +114,7 @@ class RetornoClienteList extends TPage
 
     //Adicionando a ação na tela
     $this->datagrid->addAction($action1, _t('Edit'), 'fa:edit blue');
-    $this->datagrid->addAction($action2, _t('Delete'), 'fa:trash-alt red');
+    //$this->datagrid->addAction($action2, _t('Delete'), 'fa:trash-alt red');
     $this->datagrid->addAction($action3, _t('Cancel'), 'fa:solid fa-ban black');
 
 
@@ -152,16 +152,13 @@ class RetornoClienteList extends TPage
 
   public function formatSalary($stock, $object, $row)
   {
-      $number = number_format($stock, 2, ',', '.');
-      if ($stock > 0)
-      {
-          return "<span style='color:blue'>$number</span>";
-      }
-      else
-      {
-          $row->style = "background: #FFF9A7";
-          return "<span style='color:red'>$number</span>";
-      }
+    $number = number_format($stock, 2, ',', '.');
+    if ($stock > 0) {
+      return "<span style='color:blue'>$number</span>";
+    } else {
+      $row->style = "background: #FFF9A7";
+      return "<span style='color:red'>$number</span>";
+    }
   }
 
   public function onDelete($param)
@@ -192,29 +189,34 @@ class RetornoClienteList extends TPage
         $estoque = Estoque::where('id', '=', $devolucao->estoque_id)->load();
         $estoque = $estoque[0];
         $novaQuantidade = $estoque->quantidade - $devolucao->quantidade;
-        $valor_atual = $estoque->valor_total - $devolucao->valor_total  ;
+        $valor_atual = $estoque->valor_total - $devolucao->valor_total;
         $estoque->valor_total = $valor_atual;
         $estoque->quantidade = $novaQuantidade;
         $estoque->store();
-        new TMessage('info', $valor_atual);
-        new TMessage('info', $novaQuantidade);
-        
+
+
+
         try {
           // Exclua o estoque
           TTransaction::open('sample');
           $object = new Retorno_Cliente($id);
+          
+
+          $saida = Saida::where('id', '=', $object->saida_id)
+            ->first();
+          $saida->quant_retirada = $saida->quant_retirada+ $object->quantidade;
+          $saida->store();
           $object->delete();
-     
           TTransaction::close();
 
           // Recarregue a listagem
           $this->onReload();
           new TMessage('info', 'Registro cancelado com sucesso.');
-      } catch (Exception $e) {
+        } catch (Exception $e) {
           new TMessage('error', $e->getMessage());
-      }
+        }
 
-        
+
         $this->onReload();
       }
 
