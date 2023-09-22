@@ -113,7 +113,7 @@ class SaidaList extends TPage
 
     //Adicionando a ação na tela
     $this->datagrid->addAction($action1, _t('Edit'), 'fa:edit blue');
-    $this->datagrid->addAction($action2, _t('Delete'), 'fa:trash-alt red');
+    //$this->datagrid->addAction($action2, _t('Delete'), 'fa:trash-alt red');
 
 
     //Criar datagrid 
