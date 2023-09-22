@@ -1,4 +1,10 @@
 <?php
+
+use Adianti\Control\TPage;
+use Adianti\Widget\Container\TPanelGroup;
+use Adianti\Widget\Container\TVBox;
+use Adianti\Widget\Template\THtmlRenderer;
+
 /**
  * WelcomeView
  *

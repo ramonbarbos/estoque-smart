@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <menu>
+  <menuitem label="Inicio">
+    <action>InicialPage</action>
+    <icon>fas:home fa-fw fa-fw</icon>
+  </menuitem>
   <menuitem label="Produto">
     <icon>fas:box-open fa-fw fa-fw</icon>
     <menu>
@@ -65,7 +69,7 @@
     </menu>
   </menuitem>
   <menuitem label="_t{Administration}">
-    <icon>fas:home fa-fw</icon>
+    <icon>fas:asterisk fa-fw</icon>
     <menu>
       <menuitem label="Dashboard">
         <action>SystemAdministrationDashboard</action>
