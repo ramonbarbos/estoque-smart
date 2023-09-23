@@ -15,21 +15,23 @@ use Adianti\Widget\Datagrid\TDataGridAction;
 use Adianti\Widget\Datagrid\TDataGridColumn;
 use Adianti\Widget\Datagrid\TPageNavigation;
 use Adianti\Widget\Dialog\TMessage;
+use Adianti\Widget\Form\TDate;
 use Adianti\Widget\Form\TEntry;
 use Adianti\Widget\Form\TLabel;
 use Adianti\Widget\Util\TDropDown;
 use Adianti\Widget\Util\TXMLBreadCrumb;
 use Adianti\Widget\Wrapper\TDBCombo;
+use Adianti\Widget\Wrapper\TDBUniqueSearch;
 use Adianti\Wrapper\BootstrapDatagridWrapper;
 use Adianti\Wrapper\BootstrapFormBuilder;
 
 class EntradaList extends TPage
 {
-    private $form;
-    private $datagrid;
-    private $pageNavigation;
-    private $formgrid;
-    private $deleteButton;
+    protected $form;
+    protected $datagrid;
+    protected $pageNavigation;
+    protected $formgrid;
+    protected $deleteButton;
 
     use Adianti\base\AdiantiStandardListTrait;
 
@@ -47,20 +49,28 @@ class EntradaList extends TPage
 
 
 
-        $this->addFilterField('nota_fiscal', 'like', 'nota_fiscal');
+        $this->addFilterField('data_entrada', '=', 'data_entrada');
+        $this->addFilterField('produto_id', '=', 'produto_id');
+        $this->addFilterField('fornecedor_id', '=', 'fornecedor_id');
 
         //Criação do formulario 
-        $this->form = new BootstrapFormBuilder('formulario Entrada');
+        $this->form = new BootstrapFormBuilder('form_search_Entrada');
         $this->form->setFormTitle('Buscar no Estoque');
 
         //Criação de fields
-        $nf = new TEntry('Nota Fiscal');
+        $data = new TDate('data_entrada');
+        $produto = new TDBUniqueSearch('produto_id', 'sample', 'Produto', 'id', 'nome');
+        $produto->setMinLength(0);
+        $fornecedor = new TDBUniqueSearch('fornecedor_id', 'sample', 'Fornecedor', 'id', 'nome');
+        $fornecedor->setMinLength(0);
 
         //Add filds na tela
-        $this->form->addFields([new TLabel('Nota Fiscal')], [$nf]);
+        $this->form->addFields([new TLabel('Data')], [$data]);
+        $this->form->addFields([new TLabel('Produto')], [$produto]);
+        $this->form->addFields([new TLabel('Fornecedor')], [$fornecedor]);
 
         //Tamanho dos fields
-        $nf->setSize('100%');
+        $data->setSize('50%');
 
         $this->form->setData(TSession::getValue(__CLASS__ . '_filter_data'));
 
@@ -74,15 +84,15 @@ class EntradaList extends TPage
         $this->datagrid->style = 'width: 100%';
 
         //Criando colunas da datagrid
-        $column_id = new TDataGridColumn('id', 'Cod', 'center', '5%');
-        $column_nf = new TDataGridColumn('nota_fiscal', 'Nota Fiscal', 'center', '10%');
-        $column_produto = new TDataGridColumn('produto->nome', 'Produto', 'center', '10%');
-        $column_dt_entrada = new TDataGridColumn('data_entrada', 'Data', 'center', '10%');
-        $column_fornc = new TDataGridColumn('fornecedor->nome', 'Fornecedor', 'center', '10%');
-        $column_qtd = new TDataGridColumn('quantidade', 'Quantidade', 'center', '10%');
-        $column_valor = new TDataGridColumn('valor_total', 'Total', 'center', '10%');
-        $column_preco = new TDataGridColumn('preco_unit', 'Unidade', 'center', '10%');
-        $column_tipo = new TDataGridColumn('tipo->nome', 'Tipo', 'center', '10%');
+        $column_id = new TDataGridColumn('id', 'Cod', 'left', '10%');
+        $column_nf = new TDataGridColumn('nota_fiscal', 'Nota Fiscal', 'left');
+        $column_produto = new TDataGridColumn('produto->nome', 'Produto', 'left');
+        $column_dt_entrada = new TDataGridColumn('data_entrada', 'Data', 'left');
+        $column_fornc = new TDataGridColumn('fornecedor->nome', 'Fornecedor', 'left');
+        $column_qtd = new TDataGridColumn('quantidade', 'Quantidade', 'left');
+        $column_valor = new TDataGridColumn('valor_total', 'Total', 'left');
+        $column_preco = new TDataGridColumn('preco_unit', 'Unidade', 'left');
+        $column_tipo = new TDataGridColumn('tipo->nome', 'Tipo', 'left');
 
         $column_dt_entrada->setTransformer(function ($value, $object, $row) {
             return date('d/m/Y', strtotime($value));

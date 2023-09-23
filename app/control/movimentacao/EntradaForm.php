@@ -9,6 +9,7 @@ use Adianti\Validator\TRequiredValidator;
 use Adianti\Widget\Base\TScript;
 use Adianti\Widget\Container\THBox;
 use Adianti\Widget\Container\TVBox;
+use Adianti\Widget\Dialog\TAlert;
 use Adianti\Widget\Dialog\TMessage;
 use Adianti\Widget\Form\TCheckList;
 use Adianti\Widget\Form\TCombo;
@@ -49,13 +50,18 @@ class EntradaForm extends TPage
         $this->form = new BootstrapFormBuilder('form_entrada');
         $this->form->setFormTitle('Adicionar ao Estoque');
         $this->form->setClientValidation(true);
-        $this->form->setColumnClasses(2, ['col-sm-5 col-lg-4', 'col-sm-7 col-lg-8']);
+        $this->form->setColumnClasses(3, ['col-sm-4', 'col-sm-4', 'col-sm-4']);
 
 
 
         // Criação de fields
         $id = new TEntry('id');
-        $produto = new TDBCombo('produto_id', 'sample', 'Produto', 'id', 'nome');
+        $produto = new TDBSeekButton('produto_id', 'sample', 'form_entrada', 'Produto', 'id');
+        $produto_nome = new TEntry('nome');
+        $produto->setDisplayMask('{nome} - {descricao}');
+        $produto->setDisplayLabel('Nome do Produto');
+        $produto->setAuxiliar($produto_nome);
+
         $data    = new TDate('data_entrada');
         $data->setId('form_data'); // Defina o ID como 'form_valor_total'
 
@@ -81,15 +87,14 @@ class EntradaForm extends TPage
 
 
         // Adicione fields ao formulário
-        $this->form->addFields([new TLabel('Id')], [$id]);
-        $this->form->addFields([new TLabel('Produto')], [$produto]);
-        $this->form->addFields([new TLabel('Data de Entrega')], [$data]);
-        $this->form->addFields([new TLabel('Fornecedor')], [$fornecedor]);
-        $this->form->addFields([new TLabel('Nota Fiscal')], [$nf]);
-        $this->form->addFields([new TLabel('Tipo de Entrada')], [$tp_entrada]);
-        $this->form->addFields([new TLabel('Quantidade')], [$qtd]);
-        $this->form->addFields([new TLabel('Valor unidade')], [$valor]);
-        $this->form->addFields([new TLabel('Valor Total')], [$total]);
+        $this->form->addFields([new TLabel('Codigo')], [$id],);
+        $this->form->addFields([new TLabel('Produto')],[$produto] );
+        $this->form->addFields([new TLabel('Fornecedor')], [$fornecedor],[new TLabel('Nota Fiscal')], [$nf]);
+        $this->form->addFields([new TLabel('Data de Entrega')], [$data],[new TLabel('Tipo')], [$tp_entrada]);
+        $this->form->addFields();
+        $this->form->addFields([new TLabel('Quantidade')], [$qtd],[new TLabel('Valor unidade')], [$valor],[new TLabel('Valor Total')], [$total]);
+        $this->form->addFields();
+        $this->form->addFields();
 
         // Validação do campo Nome
         $produto->addValidation('Produto', new TRequiredValidator);
@@ -104,17 +109,16 @@ class EntradaForm extends TPage
 
         // Tamanho dos campos
         $id->setSize('100%');
-        $produto->setSize('100%');
-        $produto->enableSearch();
+        $produto->setSize('45%');
+        $produto_nome->style .= ';margin-left:3px';
+        $produto_nome->setSize('50%');
         $fornecedor->setSize('100%');
         $fornecedor->enableSearch();
-        //$qtd->setRange(0, 100, 1);
         $data->setMask('dd/mm/yyyy');
         $data->setDatabaseMask('yyyy-mm-dd');
         $nf->setNumericMask(2, '', '', true);
         $valor->setSize('100%');
         $valor->setNumericMask(2, '.', '.', true);
-        //$total->setNumericMask(4, ',', '.', true);
         $total->setSize('100%');
 
         TScript::create('function calcularValorTotal() {
@@ -253,7 +257,12 @@ class EntradaForm extends TPage
                 $this->form->getField('produto_id')->setEditable(false);
                 $this->form->getField('preco_unit')->setEditable(false);
                 $this->form->getField('valor_total')->setEditable(false);
-
+                $this->form->getField('fornecedor_id')->setEditable(false);
+                $this->form->getField('tp_entrada')->setEditable(false);
+                $this->form->getField('nota_fiscal')->setEditable(false);
+                $this->form->getField('data_entrada')->setEditable(false);
+                $alert = new TAlert('warning', 'Não é possível editar esta entrada, pois já existem vinculações.');
+                $alert->show();
                 // Use a função date_format para formatar a data
                 $data = date_format(date_create($entrada->data_entrada), 'd/m/Y');
 
