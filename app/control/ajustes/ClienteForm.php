@@ -51,12 +51,7 @@ class ClienteForm extends TPage
         $this->form->setClientValidation(true);
         $this->form->setColumnClasses(3, ['col-sm-4', 'col-sm-4', 'col-sm-4']);
 
-        
-
-
-        // Adicione o campo de seleção ao formulário
-
-
+ 
         // Criação de fields
         $id = new TEntry('id');
         $doc = new TEntry('nu_documento');
@@ -94,7 +89,7 @@ class ClienteForm extends TPage
 
         $nome->addValidation('Nome', new TRequiredValidator);
         $doc->addValidation('Documento', new TRequiredValidator);
-        $sexo->addValidation('Documento', new TRequiredValidator);
+        $sexo->addValidation('Sexo', new TRequiredValidator);
 
         $id->setEditable(false);
         $id->setSize('100%');

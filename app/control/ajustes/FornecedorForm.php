@@ -19,6 +19,8 @@ use Adianti\Widget\Form\TDate;
 use Adianti\Widget\Form\TDateTime;
 use Adianti\Widget\Form\TEntry;
 use Adianti\Widget\Form\TFieldList;
+use Adianti\Widget\Form\TForm;
+use Adianti\Widget\Form\TFormSeparator;
 use Adianti\Widget\Form\TLabel;
 use Adianti\Widget\Form\TPassword;
 use Adianti\Widget\Wrapper\TDBCombo;
@@ -41,54 +43,72 @@ class FornecedorForm extends TPage
         $this->setDatabase('sample');
         $this->setActiveRecord('Fornecedor');
 
-        // Cria um array com as opções de escolha
-        $tipo_documento_options = [
-            's' => 'Selecione',
-            'j' => 'Juridico',
-            'f' => 'Fisico',
-        ];
 
         // Criação do formulário
         $this->form = new BootstrapFormBuilder('form_fornecedor');
         $this->form->setFormTitle('Fornecedor');
         $this->form->setClientValidation(true);
-        $this->form->setColumnClasses(2, ['col-sm-5 col-lg-4', 'col-sm-7 col-lg-8']);
+        $this->form->setColumnClasses(3, ['col-sm-4', 'col-sm-4', 'col-sm-4']);
+
 
         
        
 
-        // Criação de fields
-        $id = new TEntry('id');
-        $doc = new TEntry('nu_documento');
-        $nome = new TEntry('nome');
-        $tipo_documento = new TCombo('tp_fornecedor');
-        $tipo_documento->addItems($tipo_documento_options);
-        $tipo_documento->setValue('f'); // Padrão para Pessoa Física
-        $tipo_documento->setSize('100%');
+         // Criação de fields
+         $id = new TEntry('id');
+         $doc = new TEntry('nu_documento');
+         $nome = new TEntry('nome');
+         $fantasia = new TEntry('nome_fantasia');
+         $tipo_documento = new TCombo('tp_fornecedor');
+         $tipo_documento->addItems( ['F' => 'Física', 'J' => 'Jurídica' ] );
+         $tipo_documento->setValue('s');
+         $ia = new TEntry('inscricao_estadual');
+         $rs = new TEntry('razao_social');
+         $site = new TEntry('site');
+         $email = new TEntry('email');
+         $fone = new TEntry('fone');
+         $cep = new TEntry('cep');
+         $logradouro = new TEntry('logradouro');
+         $numero = new TEntry('numero');
+         $complemento = new TEntry('complemento');
+         $bairro = new TEntry('bairro');
+         $estado = new TEntry('estado');
+         $cidade = new TEntry('cidade');
 
-        // Adicione fields ao formulário
-        $this->form->addFields([new TLabel('Id')], [$id]);
-        $this->form->addFields([new TLabel('Tipo de Documento')], [$tipo_documento]);
-        $this->form->addFields([new TLabel('Doc.')], [$doc]);
-        $this->form->addFields([new TLabel('Nome')], [$nome]);
+         $cep->setExitAction( new TAction([ $this, 'onExitCEP']) );
+         $doc->setExitAction( new TAction( [$this, 'onExitCNPJ'] ) );
 
-        // Validação do campo Nome
-        $nome->addValidation('Nome', new TRequiredValidator);
-        
-        // Tornar o campo ID não editável
-        $id->setEditable(false);
 
-        // Tamanho dos campos
-        $id->setSize('100%');
-        $doc->setSize('100%');
-        $nome->setSize('100%');
+           $this->form->addFields([new TLabel('Codigo')], [$id]);
+           $this->form->addFields([new TLabel('Tipo')], [$tipo_documento],[new TLabel('CPF/CNPJ')], [$doc]);
+           $this->form->addFields([new TLabel('Nome')], [$nome],[new TLabel('Fantasia')], [$fantasia]);
+           $this->form->addFields([new TLabel('Inscrição Estadual')], [$ia],[new TLabel('Razão Social')], [$rs]);
+           $this->form->addFields([new TLabel('Email')], [$email],[new TLabel('Contato')], [$fone]);
+           $this->form->addFields([new TLabel('Site')], [$site]);
+           
+           $this->form->addContent( [new TFormSeparator('Endereço')]);
+           $this->form->addFields([new TLabel('CEP')], [$cep]);
+           $this->form->addFields([new TLabel('Logradouro')], [$logradouro],[new TLabel('Numero')], [$numero]);
+           $this->form->addFields([new TLabel('Complemento')], [$complemento],[new TLabel('Bairro')], [$bairro]);
+           $this->form->addFields([new TLabel('Estado')], [$estado],[new TLabel('Cidade')], [$cidade]);
 
-        //*
-        //if ($tipo_documento->getValue() === 'j') {
-          //  $doc->setMask('99.999.999/9999-99', true);
-        //} else if ($tipo_documento->getValue() === 'f') {
-         //   $doc->setMask('999.999.999-99', true);
-        //}
+           $nome->addValidation('Nome', new TRequiredValidator);
+           $doc->addValidation('Documento', new TRequiredValidator);
+   
+           $id->setEditable(false);
+           $id->setSize('100%');
+           $doc->setSize('100%');
+           $tipo_documento->setSize('100%');
+           $nome->setSize('100%');
+           $cep->setSize('100%');
+           $logradouro->setSize('100%');
+           $numero->setSize('100%');
+           $complemento->setSize('100%');
+           $bairro->setSize('100%');
+           $cidade->setSize('100%');
+           $cep->setMask('99.999-999');
+           $fone->setMask('(99)99999-99999');
+     
 
         // Adicionar botão de salvar
         $btn = $this->form->addAction(_t('Save'), new TAction([$this, 'onSave']), 'fa:plus green');
@@ -178,8 +198,110 @@ class FornecedorForm extends TPage
         return false;
       }
     }
-
-
+    public static function onExitCNPJ($param)
+    {
+        session_write_close();
+        
+        try
+        {
+            $cnpj = preg_replace('/[^0-9]/', '', $param['nu_documento']);
+            $url  = 'http://receitaws.com.br/v1/cnpj/'.$cnpj;
+            
+            $content = @file_get_contents($url);
+            
+            if ($content !== false)
+            {
+                $cnpj_data = json_decode($content);
+                
+                
+                $data = new stdClass;
+                if (is_object($cnpj_data) && $cnpj_data->status !== 'ERROR')
+                {
+                    $data->tp_fornecedor = 'J';
+                    $data->nome = $cnpj_data->nome;
+                    $data->nome_fantasia = !empty($cnpj_data->fantasia) ? $cnpj_data->fantasia : $cnpj_data->nome;
+                    
+                    if (empty($param['cep']))
+                    {
+                        $data->cep = $cnpj_data->cep;
+                        $data->numero = $cnpj_data->numero;
+                    }
+                    
+                    if (empty($param['fone']))
+                    {
+                        $data->fone = $cnpj_data->telefone;
+                    }
+                    
+                    if (empty($param['email']))
+                    {
+                        $data->email = $cnpj_data->email;
+                    }
+                    
+                    TForm::sendData('form_fornecedor', $data, false, true);
+                }
+                else
+                {
+                    $data->nome = '';
+                    $data->nome_fantasia = '';
+                    $data->cep = '';
+                    $data->numero = '';
+                    $data->fone = '';
+                    $data->email = '';
+                    TForm::sendData('form_fornecedor', $data, false, true);
+                }
+            }
+        }
+        catch (Exception $e)
+        {
+            new TMessage('error', $e->getMessage());
+        }
+    }
+    
+    public static function onExitCEP($param)
+    {
+        session_write_close();
+        
+        try
+        {
+            $cep = preg_replace('/[^0-9]/', '', $param['cep']);
+            $url = 'https://viacep.com.br/ws/'.$cep.'/json/';
+            
+            $content = @file_get_contents($url);
+            
+            if ($content !== false)
+            {
+                $cep_data = json_decode($content);
+                
+                $data = new stdClass;
+                if (is_object($cep_data) && empty($cep_data->erro))
+                {
+                  
+                    
+                    $data->logradouro  = $cep_data->logradouro;
+                    $data->complemento = $cep_data->complemento;
+                    $data->bairro      = $cep_data->bairro;
+                    $data->estado      = $cep_data->uf;
+                    $data->cidade      = $cep_data->localidade;
+                    TForm::sendData('form_fornecedor', $data, false, true);
+                    
+                }
+                else
+                {
+                    $data->logradouro  = '';
+                    $data->complemento = '';
+                    $data->bairro      = '';
+                    $data->estado   = '';
+                    $data->cidade   = '';
+                    TForm::sendData('form_fornecedor', $data, false, true);
+                    
+                }
+            }
+        }
+        catch (Exception $e)
+        {
+            new TMessage('error', $e->getMessage());
+        }
+    }
     // Método fechar
     public function onClose($param)
     {
