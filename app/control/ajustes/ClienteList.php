@@ -1,7 +1,11 @@
 <?php
 
+use Adianti\Base\TStandardList;
 use Adianti\Control\TAction;
 use Adianti\Control\TPage;
+use Adianti\Database\TCriteria;
+use Adianti\Database\TFilter;
+use Adianti\Database\TRepository;
 use Adianti\Database\TTransaction;
 use Adianti\Registry\TSession;
 use Adianti\Widget\Container\TPanelGroup;
@@ -21,13 +25,14 @@ use Adianti\Wrapper\BootstrapFormBuilder;
 
 class ClienteList extends TPage
 {
-    private $form;
-    private $datagrid;
-    private $pageNavigation;
-    private $formgrid;
-    private $deleteButton;
+  protected $form;
+  protected $datagrid;
+  protected $pageNavigation;
+  protected $formgrid;
+  protected $deleteButton;
 
-    use Adianti\base\AdiantiStandardListTrait;
+  use Adianti\base\AdiantiStandardListTrait;
+
     
     public function __construct(){
 
@@ -44,7 +49,7 @@ class ClienteList extends TPage
         $this->addFilterField('nu_documento', 'like', 'nu_documento');
 
         //Criação do formulario 
-        $this->form = new BootstrapFormBuilder('formulario cliente');
+        $this->form = new BootstrapFormBuilder('form_search_Cliente');
         $this->form->setFormTitle('Cliente');
 
         //Criação de fields
@@ -59,7 +64,7 @@ class ClienteList extends TPage
         $doc->setSize('100%');
         $nome->setSize('100%');
 
-        $this->form->setData( TSession::getValue( __CLASS__.'_filter_data') );
+        $this->form->setData( TSession::getValue(__CLASS__.'_filter_data') );
 
         //Adicionar field de busca
         $btn = $this->form->addAction(_t('Find'), new TAction([$this, 'onSearch']), 'fa:search');
@@ -71,9 +76,9 @@ class ClienteList extends TPage
         $this->datagrid->style = 'width: 100%';
 
         //Criando colunas da datagrid
-        $column_id = new TDataGridColumn('id', 'Cod.', 'center', '10%');
-        $column_doc = new TDataGridColumn('nu_documento', 'Doc.', 'left');
-        $column_nome = new TDataGridColumn('nome', 'Nome', 'left');
+        $column_id = new TDataGridColumn('id', 'Codigo', 'center', '10%');
+        $column_doc = new TDataGridColumn('nu_documento', 'Documento', 'center');
+        $column_nome = new TDataGridColumn('nome', 'Nome', 'center');
 
         //add coluna da datagrid
         $this->datagrid->addColumn($column_id);
@@ -127,5 +132,75 @@ class ClienteList extends TPage
        
 
     }
+
+    public function onDelete($param)
+  {
+    if (isset($param['key'])) {
+      // Obtém o ID do cliente a ser excluído
+      $id = $param['key']; 
+
+      TTransaction::open('sample');
+      $saida = Saida::where('cliente_id', '=', $id)
+                         ->first();
+      if ($saida) {
+        $retorno_id =  $saida->id;
+
+        // Verifica se existem saídas relacionadas a este estoque
+        if ($this->hasRelatedOutbound($retorno_id)) {
+          new TMessage('error', 'Não é possível excluir este Cliente, pois existem vinculações.');
+        } else {
+          try {
+            // Exclua o cliente
+            TTransaction::open('sample');
+            $object = new Cliente($id);
+            $object->delete();
+
+            TTransaction::close();
+
+            // Recarregue a listagem
+            $this->onReload();
+            new TMessage('info', 'Registro excluído com sucesso.');
+          } catch (Exception $e) {
+            new TMessage('error', $e->getMessage());
+          }
+        }
+      } else {
+        try {
+          // Exclua o cliente
+          TTransaction::open('sample');
+          $object = new Cliente($id);
+          $object->delete();
+
+          TTransaction::close();
+
+          // Recarregue a listagem
+          $this->onReload();
+          new TMessage('info', 'Registro excluído com sucesso.');
+        } catch (Exception $e) {
+          new TMessage('error', $e->getMessage());
+        }
+      }
+    }
+  }
+
+  
+  private function hasRelatedOutbound($id)
+  {
+    try {
+      // Verifique se há saídas relacionadas a este estoque
+      TTransaction::open('sample');
+      $criteria = new TCriteria;
+      $criteria->add(new TFilter('id', '=', $id));
+      $repository = new TRepository('Saida');
+      $count = $repository->count($criteria);
+      TTransaction::close();
+
+      return $count > 0;
+    } catch (Exception $e) {
+      // Em caso de erro, trate-o de acordo com suas necessidades
+      new TMessage('error', $e->getMessage());
+      return false;
+    }
+  }
   
 }

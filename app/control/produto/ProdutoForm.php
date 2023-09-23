@@ -3,11 +3,15 @@
 use Adianti\Control\TAction;
 use Adianti\Control\TPage;
 use Adianti\Core\AdiantiCoreApplication;
+use Adianti\Database\TCriteria;
+use Adianti\Database\TFilter;
+use Adianti\Database\TRepository;
 use Adianti\Database\TTransaction;
 use Adianti\Validator\TRequiredValidator;
 use Adianti\Widget\Base\TScript;
 use Adianti\Widget\Container\THBox;
 use Adianti\Widget\Container\TVBox;
+use Adianti\Widget\Dialog\TAlert;
 use Adianti\Widget\Dialog\TMessage;
 use Adianti\Widget\Form\TCheckList;
 use Adianti\Widget\Form\TCombo;
@@ -90,11 +94,76 @@ class ProdutoForm extends TPage
         parent::add($container);
     }
 
-    // Método para tratar a mudança no campo de seleção
-    public  static function onChangeDocumento($param)
+    public function onEdit($param)
     {
-       
+      if (isset($param['key'])) {
+        // Obtém o ID do cliente a ser excluído
+        $id = $param['key']; 
+  
+        TTransaction::open('sample');
+        $entrada = Entrada::where('produto_id', '=', $id)
+                           ->first();
+        if ($entrada) {
+          $retorno_id =  $entrada->id;
+  
+          // Verifica se existem saídas relacionadas a este estoque
+          if ($this->hasRelatedOutbound($retorno_id)) {
+                 $entrada = new Produto($id);
+                $this->form->setData($entrada);
+                $this->form->getField('id')->setEditable(false);
+                $this->form->getField('nome')->setEditable(false);
+                $this->form->getField('descricao')->setEditable(false);
+                 $alert = new TAlert('warning', 'Não é possível editar este produto, pois já existem vinculações.');
+                 $alert->show();
+                 
+          } else {
+            try {
+              // editar o cliente
+              TTransaction::open('sample');
+              $object = new Produto($id);
+              $this->form->setData($object);
+  
+              TTransaction::close();
+  
+            } catch (Exception $e) {
+              new TMessage('error', $e->getMessage());
+            }
+          }
+        } else {
+            try {
+                TTransaction::open('sample');
+                $object = new Produto($id);
+                $this->form->setData($object);
+    
+                TTransaction::close();
+    
+              } catch (Exception $e) {
+                new TMessage('error', $e->getMessage());
+              }
+        }
+      }
     }
+  
+    
+    private function hasRelatedOutbound($id)
+    {
+      try {
+        // Verifique se há saídas relacionadas a este estoque
+        TTransaction::open('sample');
+        $criteria = new TCriteria;
+        $criteria->add(new TFilter('id', '=', $id));
+        $repository = new TRepository('Entrada');
+        $count = $repository->count($criteria);
+        TTransaction::close();
+  
+        return $count > 0;
+      } catch (Exception $e) {
+        // Em caso de erro, trate-o de acordo com suas necessidades
+        new TMessage('error', $e->getMessage());
+        return false;
+      }
+    }
+
 
     // Método fechar
     public function onClose($param)

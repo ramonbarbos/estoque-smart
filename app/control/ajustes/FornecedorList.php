@@ -2,6 +2,9 @@
 
 use Adianti\Control\TAction;
 use Adianti\Control\TPage;
+use Adianti\Database\TCriteria;
+use Adianti\Database\TFilter;
+use Adianti\Database\TRepository;
 use Adianti\Database\TTransaction;
 use Adianti\Registry\TSession;
 use Adianti\Widget\Container\TPanelGroup;
@@ -44,7 +47,7 @@ class FornecedorList extends TPage
         $this->addFilterField('nu_documento', 'like', 'nu_documento');
 
         //Criação do formulario 
-        $this->form = new BootstrapFormBuilder('formulario fornecedor');
+        $this->form = new BootstrapFormBuilder('form_search_Fornecedor');
         $this->form->setFormTitle('Fornecedor');
 
         //Criação de fields
@@ -71,9 +74,9 @@ class FornecedorList extends TPage
         $this->datagrid->style = 'width: 100%';
 
         //Criando colunas da datagrid
-        $column_id = new TDataGridColumn('id', 'Cod.', 'center', '10%');
-        $column_doc = new TDataGridColumn('nu_documento', 'Doc', 'left');
-        $column_nome = new TDataGridColumn('nome', 'Nome', 'left');
+        $column_id = new TDataGridColumn('id', 'Codigo', 'center', '10%');
+        $column_doc = new TDataGridColumn('nu_documento', 'Documento', 'center');
+        $column_nome = new TDataGridColumn('nome', 'Nome', 'center');
 
         //add coluna da datagrid
         $this->datagrid->addColumn($column_id);
@@ -127,5 +130,74 @@ class FornecedorList extends TPage
        
 
     }
+    public function onDelete($param)
+  {
+    if (isset($param['key'])) {
+      // Obtém o ID do cliente a ser excluído
+      $id = $param['key']; 
+
+      TTransaction::open('sample');
+      $entrada = Entrada::where('fornecedor_id', '=', $id)
+                         ->first();
+      if ($entrada) {
+        $retorno_id =  $entrada->id;
+
+        // Verifica se existem saídas relacionadas a este estoque
+        if ($this->hasRelatedOutbound($retorno_id)) {
+          new TMessage('error', 'Não é possível excluir este Fornecedor, pois existem vinculações.');
+        } else {
+          try {
+            // Exclua o fornecedor
+            TTransaction::open('sample');
+            $object = new Fornecedor($id);
+            $object->delete();
+
+            TTransaction::close();
+
+            // Recarregue a listagem
+            $this->onReload();
+            new TMessage('info', 'Registro excluído com sucesso.');
+          } catch (Exception $e) {
+            new TMessage('error', $e->getMessage());
+          }
+        }
+      } else {
+        try {
+          // Exclua o cliente
+          TTransaction::open('sample');
+          $object = new Fornecedor($id);
+          $object->delete();
+
+          TTransaction::close();
+
+          // Recarregue a listagem
+          $this->onReload();
+          new TMessage('info', 'Registro excluído com sucesso.');
+        } catch (Exception $e) {
+          new TMessage('error', $e->getMessage());
+        }
+      }
+    }
+  }
+
+  
+  private function hasRelatedOutbound($id)
+  {
+    try {
+      // Verifique se há entrada relacionadas a este estoque
+      TTransaction::open('sample');
+      $criteria = new TCriteria;
+      $criteria->add(new TFilter('id', '=', $id));
+      $repository = new TRepository('Entrada');
+      $count = $repository->count($criteria);
+      TTransaction::close();
+
+      return $count > 0;
+    } catch (Exception $e) {
+      // Em caso de erro, trate-o de acordo com suas necessidades
+      new TMessage('error', $e->getMessage());
+      return false;
+    }
+  }
   
 }

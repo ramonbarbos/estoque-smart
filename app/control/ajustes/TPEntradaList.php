@@ -2,6 +2,9 @@
 
 use Adianti\Control\TAction;
 use Adianti\Control\TPage;
+use Adianti\Database\TCriteria;
+use Adianti\Database\TFilter;
+use Adianti\Database\TRepository;
 use Adianti\Database\TTransaction;
 use Adianti\Registry\TSession;
 use Adianti\Widget\Container\TPanelGroup;
@@ -43,8 +46,8 @@ class TPEntradaList extends TPage
         $this->addFilterField('nome', 'like', 'nome');
 
         //Criação do formulario 
-        $this->form = new BootstrapFormBuilder('formulario tipo_entrada');
-        $this->form->setFormTitle('Tipo_Entrada');
+        $this->form = new BootstrapFormBuilder('form_search_Tipo_Entrada');
+        $this->form->setFormTitle('Tipo de Entrada');
 
         //Criação de fields
         $nome = new TEntry('nome');
@@ -120,5 +123,73 @@ class TPEntradaList extends TPage
        
 
     }
+    public function onDelete($param)
+  {
+    if (isset($param['key'])) {
+      // Obtém o ID do cliente a ser excluído
+      $id = $param['key']; 
+
+      TTransaction::open('sample');
+      $entrada = Entrada::where('tp_entrada', '=', $id)
+                         ->first();
+      if ($entrada) {
+        $retorno_id =  $entrada->id;
+
+        // Verifica se existem saídas relacionadas a este estoque
+        if ($this->hasRelatedOutbound($retorno_id)) {
+          new TMessage('error', 'Não é possível excluir este Tipo de Entrada, pois existem vinculações.');
+        } else {
+          try {
+            // Exclua o tipo entrada
+            TTransaction::open('sample');
+            $object = new Tipo_Entrada($id);
+            $object->delete();
+
+            TTransaction::close();
+
+            // Recarregue a listagem
+            $this->onReload();
+            new TMessage('info', 'Registro excluído com sucesso.');
+          } catch (Exception $e) {
+            new TMessage('error', $e->getMessage());
+          }
+        }
+      } else {
+        try {
+          // Exclua o tipo entrada
+          TTransaction::open('sample');
+          $object = new Tipo_Entrada($id);
+          $object->delete();
+
+          TTransaction::close();
+
+          // Recarregue a listagem
+          $this->onReload();
+          new TMessage('info', 'Registro excluído com sucesso.');
+        } catch (Exception $e) {
+          new TMessage('error', $e->getMessage());
+        }
+      }
+    }
+  }
+
   
+  private function hasRelatedOutbound($id)
+  {
+    try {
+      // Verifique se há entrada relacionadas a este estoque
+      TTransaction::open('sample');
+      $criteria = new TCriteria;
+      $criteria->add(new TFilter('id', '=', $id));
+      $repository = new TRepository('Entrada');
+      $count = $repository->count($criteria);
+      TTransaction::close();
+
+      return $count > 0;
+    } catch (Exception $e) {
+      // Em caso de erro, trate-o de acordo com suas necessidades
+      new TMessage('error', $e->getMessage());
+      return false;
+    }
+  }
 }

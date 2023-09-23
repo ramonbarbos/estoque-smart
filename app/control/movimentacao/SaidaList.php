@@ -44,20 +44,29 @@ class SaidaList extends TPage
     $this->setDefaultOrder('id', 'asc');
     $this->setLimit(10);
 
+    $this->addFilterField('id', '=', 'id');
+    $this->addFilterField('produto_id', 'like', 'produto_id');
     $this->addFilterField('nota_fiscal', 'like', 'nota_fiscal');
+  
 
     //Criação do formulario 
     $this->form = new BootstrapFormBuilder('formulario saida');
     $this->form->setFormTitle('Saida do Estoque');
 
     //Criação de fields
-    $nf = new TEntry('Nota Fiscal');
+    $id = new TEntry('id');
+    $produto = new TEntry('produto_id');
+    $nf = new TEntry('nota_fiscal');
 
     //Add filds na tela
+    $this->form->addFields([new TLabel('Codigo')], [$id]);
+    $this->form->addFields([new TLabel('Produto')], [$produto]);
     $this->form->addFields([new TLabel('Nota Fiscal')], [$nf]);
 
     //Tamanho dos fields
-    $nf->setSize('100%');
+    $id->setSize('50%');
+    $produto->setSize('50%');
+    $nf->setSize('50%');
 
     $this->form->setData(TSession::getValue(__CLASS__ . '_filter_data'));
 
