@@ -22,6 +22,16 @@ class Cliente extends TRecord
         parent::addAttribute('tp_cliente');
         parent::addAttribute('nu_documento');
         parent::addAttribute('nome');
+        parent::addAttribute('sexo');
+        parent::addAttribute('email');
+        parent::addAttribute('fone');
+        parent::addAttribute('cep');
+        parent::addAttribute('logradouro');
+        parent::addAttribute('numero');
+        parent::addAttribute('complemento');
+        parent::addAttribute('bairro');
+        parent::addAttribute('estado');
+        parent::addAttribute('cidade');
         // Configurar os campos de timestamps
         parent::addAttribute('created_at');
         parent::addAttribute('updated_at');

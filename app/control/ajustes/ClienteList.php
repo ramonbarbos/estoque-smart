@@ -57,8 +57,8 @@ class ClienteList extends TPage
         $nome = new TEntry('nome');
 
         //Add filds na tela
-        $this->form->addFields( [new TLabel('Documento')], [ $doc ]  );
         $this->form->addFields( [new TLabel('Nome')], [ $nome ] );
+        $this->form->addFields( [new TLabel('CPF/CNPJ')], [ $doc ]  );
 
         //Tamanho dos fields
         $doc->setSize('100%');
@@ -76,14 +76,16 @@ class ClienteList extends TPage
         $this->datagrid->style = 'width: 100%';
 
         //Criando colunas da datagrid
-        $column_id = new TDataGridColumn('id', 'Codigo', 'center', '10%');
-        $column_doc = new TDataGridColumn('nu_documento', 'Documento', 'center');
-        $column_nome = new TDataGridColumn('nome', 'Nome', 'center');
+        $column_id = new TDataGridColumn('id', 'Codigo', 'left');
+        $column_nome = new TDataGridColumn('nome', 'Nome', 'left', );
+        $column_doc = new TDataGridColumn('nu_documento', 'CPF/CNPJ', 'left');
+        $column_email = new TDataGridColumn('email', 'Email', 'left');
 
         //add coluna da datagrid
         $this->datagrid->addColumn($column_id);
-        $this->datagrid->addColumn($column_doc);
         $this->datagrid->addColumn($column_nome);
+        $this->datagrid->addColumn($column_doc);
+        $this->datagrid->addColumn($column_email);
 
         //Criando ações para o datagrid
         $column_id->setAction(new TAction([$this, 'onReload']), ['order'=> 'id']);

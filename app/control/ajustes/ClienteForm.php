@@ -19,6 +19,8 @@ use Adianti\Widget\Form\TDate;
 use Adianti\Widget\Form\TDateTime;
 use Adianti\Widget\Form\TEntry;
 use Adianti\Widget\Form\TFieldList;
+use Adianti\Widget\Form\TForm;
+use Adianti\Widget\Form\TFormSeparator;
 use Adianti\Widget\Form\TLabel;
 use Adianti\Widget\Form\TPassword;
 use Adianti\Widget\Wrapper\TDBCombo;
@@ -42,18 +44,12 @@ class ClienteForm extends TPage
         $this->setDatabase('sample');
         $this->setActiveRecord('Cliente');
 
-        // Cria um array com as opções de escolha
-        $tipo_documento_options = [
-            's' => 'Selecione',
-            'j' => 'Juridico',
-            'f' => 'Fisico',
-        ];
-
+     
         // Criação do formulário
         $this->form = new BootstrapFormBuilder('form_cliente');
         $this->form->setFormTitle('Cliente');
         $this->form->setClientValidation(true);
-        $this->form->setColumnClasses(2, ['col-sm-5 col-lg-4', 'col-sm-7 col-lg-8']);
+        $this->form->setColumnClasses(3, ['col-sm-4', 'col-sm-4', 'col-sm-4']);
 
         
 
@@ -65,34 +61,54 @@ class ClienteForm extends TPage
         $id = new TEntry('id');
         $doc = new TEntry('nu_documento');
         $nome = new TEntry('nome');
+        $sexo = new TCombo('sexo');
+        $sexo->addItems( ['F' => 'Feminino', 'M' => 'Maculino' ] );
+        $sexo->setValue('s'); 
         $tipo_documento = new TCombo('tp_cliente');
-        $tipo_documento->addItems($tipo_documento_options);
-        $tipo_documento->setValue('f'); // Padrão para Pessoa Física
-        $tipo_documento->setSize('100%');
+        $tipo_documento->addItems( ['F' => 'Física', 'J' => 'Jurídica' ] );
+        $tipo_documento->setValue('s'); 
+        $email = new TEntry('email');
+        $fone = new TEntry('fone');
+        $cep = new TEntry('cep');
+        $logradouro = new TEntry('logradouro');
+        $numero = new TEntry('numero');
+        $complemento = new TEntry('complemento');
+        $bairro = new TEntry('bairro');
+        $estado = new TEntry('estado');
+        $cidade = new TEntry('cidade');
+
+        $cep->setExitAction( new TAction([ $this, 'onExitCEP']) );
 
         // Adicione fields ao formulário
-        $this->form->addFields([new TLabel('Id')], [$id]);
-        $this->form->addFields([new TLabel('Tipo de Documento')], [$tipo_documento]);
-        $this->form->addFields([new TLabel('Doc.')], [$doc]);
-        $this->form->addFields([new TLabel('Nome')], [$nome]);
+        $this->form->addFields([new TLabel('Codigo')], [$id]);
+        $this->form->addFields([new TLabel('Tipo')], [$tipo_documento],[new TLabel('CPF/CNPJ')], [$doc]);
+        $this->form->addFields([new TLabel('Nome')], [$nome],[new TLabel('Sexo')], [$sexo]);
+        $this->form->addFields([new TLabel('Email')], [$email],[new TLabel('Contato')], [$fone]);
 
-        // Validação do campo Nome
+        
+        $this->form->addContent( [new TFormSeparator('Endereço')]);
+        $this->form->addFields([new TLabel('CEP')], [$cep]);
+        $this->form->addFields([new TLabel('Logradouro')], [$logradouro],[new TLabel('Numero')], [$numero]);
+        $this->form->addFields([new TLabel('Complemento')], [$complemento],[new TLabel('Bairro')], [$bairro]);
+        $this->form->addFields([new TLabel('Estado')], [$estado],[new TLabel('Cidade')], [$cidade]);
+
         $nome->addValidation('Nome', new TRequiredValidator);
+        $doc->addValidation('Documento', new TRequiredValidator);
+        $sexo->addValidation('Documento', new TRequiredValidator);
 
-        // Tornar o campo ID não editável
         $id->setEditable(false);
-
-        // Tamanho dos campos
         $id->setSize('100%');
         $doc->setSize('100%');
+        $tipo_documento->setSize('100%');
         $nome->setSize('100%');
-
-        // Verifica o valor do campo $tipo_documento
-        if ($tipo_documento->getValue() === 'j') {
-            $doc->setMask('99.999.999/9999-99', true);
-        } else if ($tipo_documento->getValue() === 'f') {
-            $doc->setMask('999.999.999-99', true);
-        }
+        $cep->setSize('100%');
+        $logradouro->setSize('100%');
+        $numero->setSize('100%');
+        $complemento->setSize('100%');
+        $bairro->setSize('100%');
+        $cidade->setSize('100%');
+        $cep->setMask('99.999-999');
+        $fone->setMask('(99)99999-99999');
 
         // Adicionar botão de salvar
         $btn = $this->form->addAction(_t('Save'), new TAction([$this, 'onSave']), 'fa:plus green');
@@ -110,6 +126,8 @@ class ClienteForm extends TPage
         $container->add($this->form);
 
         parent::add($container);
+
+    
     }
 
     public function onEdit($param)
@@ -183,7 +201,51 @@ class ClienteForm extends TPage
         return false;
       }
     }
-
+    public static function onExitCEP($param)
+    {
+        session_write_close();
+        
+        try
+        {
+            $cep = preg_replace('/[^0-9]/', '', $param['cep']);
+            $url = 'https://viacep.com.br/ws/'.$cep.'/json/';
+            
+            $content = @file_get_contents($url);
+            
+            if ($content !== false)
+            {
+                $cep_data = json_decode($content);
+                
+                $data = new stdClass;
+                if (is_object($cep_data) && empty($cep_data->erro))
+                {
+                  
+                    
+                    $data->logradouro  = $cep_data->logradouro;
+                    $data->complemento = $cep_data->complemento;
+                    $data->bairro      = $cep_data->bairro;
+                    $data->estado      = $cep_data->uf;
+                    $data->cidade      = $cep_data->localidade;
+                    TForm::sendData('form_cliente', $data, false, true);
+                    
+                }
+                else
+                {
+                    $data->logradouro  = '';
+                    $data->complemento = '';
+                    $data->bairro      = '';
+                    $data->estado   = '';
+                    $data->cidade   = '';
+                    TForm::sendData('form_cliente', $data, false, true);
+                    
+                }
+            }
+        }
+        catch (Exception $e)
+        {
+            new TMessage('error', $e->getMessage());
+        }
+    }
     // Método fechar
     public function onClose($param)
     {
