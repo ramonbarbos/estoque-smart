@@ -12,11 +12,13 @@ use Adianti\Widget\Datagrid\TDataGridAction;
 use Adianti\Widget\Datagrid\TDataGridColumn;
 use Adianti\Widget\Datagrid\TPageNavigation;
 use Adianti\Widget\Dialog\TMessage;
+use Adianti\Widget\Form\TDate;
 use Adianti\Widget\Form\TEntry;
 use Adianti\Widget\Form\TLabel;
 use Adianti\Widget\Util\TDropDown;
 use Adianti\Widget\Util\TXMLBreadCrumb;
 use Adianti\Widget\Wrapper\TDBCombo;
+use Adianti\Widget\Wrapper\TDBUniqueSearch;
 use Adianti\Wrapper\BootstrapDatagridWrapper;
 use Adianti\Wrapper\BootstrapFormBuilder;
 
@@ -44,20 +46,28 @@ class RetornoFornecedorList extends TPage
 
 
 
-    $this->addFilterField('fornecedor_id', 'like', 'fornecedor_id');
+    $this->addFilterField('data_retorno', '=', 'data_retorno');
+    $this->addFilterField('produto_id', '=', 'produto_id');
+    $this->addFilterField('fornecedor_id', '=', 'fornecedor_id');
 
     //Criação do formulario 
-    $this->form = new BootstrapFormBuilder('formulario retorno_fornecedor');
-    $this->form->setFormTitle('Retorno ao Fornecedor');
+    $this->form = new BootstrapFormBuilder('form_search_Retorno_Fornecedor');
+    $this->form->setFormTitle('Devolução do Cliente');
 
-    //Criação de fields
-    $fornecedor = new TEntry('fornecedor_id');
+          //Criação de fields
+          $data = new TDate('data_retorno');
+          $produto = new TDBUniqueSearch('produto_id', 'sample', 'Produto', 'id', 'nome');
+          $produto->setMinLength(0);
+          $fornecedor = new TDBUniqueSearch('fornecedor_id', 'sample', 'Cliente', 'id', 'nome');
+          $fornecedor->setMinLength(0);
+  
+          //Add filds na tela
+          $this->form->addFields([new TLabel('Data')], [$data]);
+          $this->form->addFields([new TLabel('Produto')], [$produto]);
+          $this->form->addFields([new TLabel('Fornecedor')], [$fornecedor]);
 
-    //Add filds na tela
-    $this->form->addFields([new TLabel('Fornecedor')], [$fornecedor]);
-
-    //Tamanho dos fields
-    $fornecedor->setSize('100%');
+   //Tamanho dos fields
+   $data->setSize('50%');
 
     $this->form->setData(TSession::getValue(__CLASS__ . '_filter_data'));
 
@@ -71,12 +81,12 @@ class RetornoFornecedorList extends TPage
     $this->datagrid->style = 'width: 100%';
 
     //Criando colunas da datagrid
-    $column_id = new TDataGridColumn('id', 'Cod', 'center');
-    $column_nf = new TDataGridColumn('entrada->nota_fiscal', 'Nota Fiscal', 'center');
-    $column_produto = new TDataGridColumn('produto->nome', 'Produto', 'center');
-    $column_dt_retorno = new TDataGridColumn('data_retorno', 'Data de Retorno', 'center');
+    $column_id = new TDataGridColumn('id', 'Codigo', 'left');
+    $column_nf = new TDataGridColumn('entrada->nota_fiscal', 'Nota Fiscal', 'left');
+    $column_produto = new TDataGridColumn('produto->nome', 'Produto', 'left');
+    $column_dt_retorno = new TDataGridColumn('data_retorno', 'Data de Retorno', 'left');
     $column_fornc = new TDataGridColumn('fornecedor->nome', 'Fornecedor', 'left');
-    $column_qtd = new TDataGridColumn('quantidade', 'Quant.', 'center');
+    $column_qtd = new TDataGridColumn('quantidade', 'Quant.', 'left');
     $column_preco = new TDataGridColumn('preco_unit', 'Valor Unid.', 'left');
 
     $column_dt_retorno->setTransformer(function ($value, $object, $row) {

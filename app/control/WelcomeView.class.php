@@ -1,9 +1,11 @@
 <?php
 
 use Adianti\Control\TPage;
+use Adianti\Database\TTransaction;
 use Adianti\Widget\Container\TPanelGroup;
 use Adianti\Widget\Container\TVBox;
 use Adianti\Widget\Template\THtmlRenderer;
+use Adianti\Widget\Util\TXMLBreadCrumb;
 
 /**
  * WelcomeView
@@ -23,29 +25,62 @@ class WelcomeView extends TPage
     function __construct()
     {
         parent::__construct();
-        
-        $html1 = new THtmlRenderer('app/resources/system_welcome_en.html');
-        $html2 = new THtmlRenderer('app/resources/system_welcome_pt.html');
-        $html3 = new THtmlRenderer('app/resources/system_welcome_es.html');
 
-        // replace the main section variables
-        $html1->enableSection('main', array());
-        $html2->enableSection('main', array());
-        $html3->enableSection('main', array());
+        try {
+            TTransaction::open('sample');
+
+
+                $conn = TTransaction::get();
+                $sqlQuant = "SELECT SUM(quantidade) as total_quantidade FROM estoque";
+                $result = $conn->query($sqlQuant);
+
+            
+                if ($result) {
+                    $row = $result->fetch(PDO::FETCH_ASSOC);
+                    $estoqueTotal = $row['total_quantidade'];
+                } else {
+                    $estoqueTotal = 0;
+                }
+
+                $sqlVal = "SELECT SUM(valor_total) as total_valor FROM estoque";
+                $resultVal = $conn->query($sqlVal);
+
+
+                if ($resultVal) {
+                    $row = $resultVal->fetch(PDO::FETCH_ASSOC);
+                    $valorTotal = $row['total_valor'];
+                } else {
+                    $valorTotal = 0;
+                }
+
         
-        $panel1 = new TPanelGroup('Welcome!');
-        $panel1->add($html1);
-        
-        $panel2 = new TPanelGroup('Bem-vindo!');
-        $panel2->add($html2);
-		
-        $panel3 = new TPanelGroup('Bienvenido!');
-        $panel3->add($html3);
-        
-        $vbox = TVBox::pack($panel1, $panel2, $panel3);
-        $vbox->style = 'display:block; width: 100%';
-        
-        // add the template to the page
-        parent::add( $vbox );
+
+            $html = new THtmlRenderer('app/templates/theme3/system_dashboard.html');
+
+            $indicator1 = new THtmlRenderer('app/templates/theme3/info-box.html');
+            $indicator2 = new THtmlRenderer('app/templates/theme3/info-box.html');
+            $indicator3 = new THtmlRenderer('app/templates/theme3/info-box.html');
+
+            $estoqueZero = Estoque::where('quantidade', '=', 0)->count();
+
+
+            $indicator1->enableSection('main', ['title' => 'Estoque',    'icon' => 'cube', 'background' => 'orange', 'text' => 'PRODUTO COM ESTOQUE BAIXO', 'value' => $estoqueZero]);
+
+            $indicator2->enableSection('main', ['title' => 'Estoque',    'icon' => 'box', 'background' => 'blue', 'text' => 'QUANTIDADE DE PRODUTO NO ESTOQUE', 'value' => $estoqueTotal]);
+
+            $indicator3->enableSection('main', ['title' => 'Estoque',    'icon' => 'dollar-sign', 'background' => 'green', 'text' => 'CUSTO TOTAL DE PRODUTOS', 'value' =>   'R$ '.$valorTotal]);
+
+            $html->enableSection('main', ['indicator1' => $indicator1, 'indicator2' => $indicator2,  'indicator3' => $indicator3]);
+
+            $container = new TVBox;
+            $container->style = 'width: 100%';
+            $container->add(new TXMLBreadCrumb('menu.xml', __CLASS__));
+            $container->add($html);
+
+            TTransaction::close();
+            parent::add($container);
+        } catch (Exception $e) {
+            parent::add($e->getMessage());
+        }
     }
 }

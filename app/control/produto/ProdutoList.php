@@ -69,12 +69,18 @@ class ProdutoList extends TPage
         $this->datagrid->style = 'width: 100%';
 
         //Criando colunas da datagrid
-        $column_id = new TDataGridColumn('id', 'Cod.', 'center', '10%');
+        $column_id = new TDataGridColumn('id', 'Codigo', 'left',);
         $column_nome = new TDataGridColumn('nome', 'Nome', 'left');
+        $column_cadastro = new TDataGridColumn('created_at', 'Cadstro', 'left');
+
+        $column_cadastro->setTransformer(function ($value, $object, $row) {
+          return date('d/m/Y', strtotime($value));
+      });
 
         //add coluna da datagrid
         $this->datagrid->addColumn($column_id);
         $this->datagrid->addColumn($column_nome);
+        $this->datagrid->addColumn($column_cadastro);
 
         //Criando ações para o datagrid
         $column_id->setAction(new TAction([$this, 'onReload']), ['order'=> 'id']);

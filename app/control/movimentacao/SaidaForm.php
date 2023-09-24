@@ -12,6 +12,7 @@ use Adianti\Validator\TRequiredValidator;
 use Adianti\Widget\Base\TScript;
 use Adianti\Widget\Container\THBox;
 use Adianti\Widget\Container\TVBox;
+use Adianti\Widget\Dialog\TAlert;
 use Adianti\Widget\Dialog\TMessage;
 use Adianti\Widget\Form\TCheckList;
 use Adianti\Widget\Form\TCombo;
@@ -58,6 +59,7 @@ class SaidaForm extends TPage
         
                 $criteria = new TCriteria;
                 $criteria->add(new TFilter('quant_retirada', '>', 0));
+              //  $criteria->add(new TFilter('produto_id', '>', 0));
                 $criteria->setProperty('order', 'id');
                 // Use o critério para buscar os registros do banco de dados
                 $repository = new TRepository('Estoque');
@@ -66,7 +68,7 @@ class SaidaForm extends TPage
                 // Crie um array de itens no formato chave-valor
                 $options = [];
                 foreach ($items as $item) {
-                    $options[$item->id] = $item->id;
+                    $options[$item->produto->id] = $item->produto->nome;
                 }
 
             TTransaction::close(); // Feche a transação quando terminar
@@ -78,13 +80,16 @@ class SaidaForm extends TPage
 
         // Criação de fields
         $id = new TEntry('id');
-        $entrada = new TDBCombo('estoque_id', 'sample', 'Estoque', 'id', 'estoque_id');
-        $entrada->setChangeAction(new TAction([$this, 'onProdutoChange']));
-        $entrada->setId('form_entrada');
-        $produto = new TEntry('produto_id');
-        $produto->setId('form_produto');
-        $produto_nome = new TEntry('produto_nome');
-        $produto_nome->setId('form_produto_nome');
+        $produto = new TDBCombo('prod', 'sample', 'Produto', 'id', 'nome');
+        $produto->setChangeAction(new TAction([$this, 'onProdutoChange']));
+  
+        $produto_id = new TEntry('produto_id');
+        $produto_id->setId('form_produto');
+
+        $estoque_id = new TEntry('estoque_id');
+        $estoque_id->setId('form_estoque');
+   
+
         $datas    = new TDate('data_saida');
         $datas->setId('form_data');
         $cliente = new TDBCombo('cliente_id', 'sample', 'Cliente', 'id', 'nome');
@@ -107,12 +112,11 @@ class SaidaForm extends TPage
         $total->setId('form_valor_total');
         $total->setProperty('onkeyup', 'calcularValorTotal()');
 
-        $entrada->addItems($options);
+        $produto->addItems($options);
 
         // Adicione fields ao formulário
         $this->form->addFields([new TLabel('Id')], [$id]);
-        $this->form->addFields([new TLabel('Estoque')], [$entrada],);
-        $this->form->addFields([new TLabel('Produto')], [$produto, $produto_nome],);
+        $this->form->addFields([new TLabel('Produto')], [$produto, $produto_id,$estoque_id]);
         $this->form->addFields([new TLabel('Nota Fiscal')], [$nf]);
         $this->form->addFields([new TLabel('Data de Saida')], [$datas]);
         $this->form->addFields([new TLabel('Cliente')], [$cliente]);
@@ -124,7 +128,7 @@ class SaidaForm extends TPage
         $this->form->addFields([new TLabel('Total')], [$total]);
 
         // Validação do campo Nome
-        $entrada->addValidation('Produto', new TRequiredValidator);
+        $produto->addValidation('Produto', new TRequiredValidator);
         $cliente->addValidation('Cliente', new TRequiredValidator);
         $datas->addValidation('Data de Saida', new TRequiredValidator);
         $tp_saida->addValidation('Tipo de Saida', new TRequiredValidator);
@@ -135,11 +139,11 @@ class SaidaForm extends TPage
         $qtd_disponivel->setEditable(false);
         $valor_disponivel->setEditable(false);
         $valor->setEditable(false);
-
+        $estoque_id->style = 'display: none;';
         // Tamanho dos campos
         $id->setSize('100%');
-        $entrada->setSize('50%');
-        $entrada->enableSearch();
+        $produto->setSize('50%');
+        $produto->enableSearch();
         $cliente->setSize('100%');
         $cliente->enableSearch();
         //$datas->setDatabaseMask('yyyy-mm-dd');
@@ -207,14 +211,14 @@ class SaidaForm extends TPage
         try {
             TTransaction::open('sample');
 
-            if (isset($param['estoque_id'])) {
-                $estoque_id = $param['estoque_id'];
-
+            if (isset($param['prod'])) {
+                $produto_id = $param['prod'];
+                $estoque = Estoque::where('produto_id', '=', $produto_id)->first();
                 // Faça uma consulta no banco de dados para obter a nota fiscal correspondente
-                $estoque = new Estoque($estoque_id);
+                 //  $estoque = new Estoque($estoque_id);
                 $nota_fiscal = $estoque->nota_fiscal;
                 $produto = $estoque->produto_id;
-                $produto_nome = $estoque->produto->nome;
+                $estoque_id = $estoque->id;
                 $qtd_disponivel = $estoque->quantidade; // Suponhamos que o campo no banco de dados se chama "quantidade"
                 $valor_disponivel = $estoque->valor_total; // Suponhamos que o campo no banco de dados se chama "valor"
                 $valor = $estoque->preco_unit; // Suponhamos que o campo no banco de dados se chama "valor"
@@ -227,7 +231,7 @@ class SaidaForm extends TPage
                 TScript::create("document.getElementById('form_valor_disponivel').value = '{$valor_disponivel}';");
                 TScript::create("document.getElementById('form_preco_unit').value = '{$valor}';");
                 TScript::create("document.getElementById('form_produto').value = '{$produto}';");
-                TScript::create("document.getElementById('form_produto_nome').value = '{$produto_nome}';");
+                TScript::create("document.getElementById('form_estoque').value = '{$estoque_id}';");
             }
         } catch (Exception $e) {
             new TMessage('error', $e->getMessage());
@@ -336,30 +340,47 @@ class SaidaForm extends TPage
                 $key = $param['key']; // A chave primária do registro que está sendo editado
                 $saida = new Saida($key);
 
-                $entrada_id = $saida->entrada_id;
+                $estoque_id = $saida->estoque_id;
 
                 // Faça uma consulta no banco de dados para obter a nota fiscal correspondente
-                $entrada = new Entrada($entrada_id);
-                $nota_fiscal = $entrada->nota_fiscal;
-                $qtd_disponivel = $entrada->quantidade;
-
+                $estoque = new Estoque($estoque_id);
+                $qtd_disponivel = $estoque->quantidade;
+                $produto = $saida->produto_id;
                 $produto_id = $saida->produto_id;
-                $produto_nome = $saida->produto->nome;
                 $data = $saida->data_saida;
+                $nota_fiscal = $saida->nota_fiscal;
                 $cliente = $saida->cliente_id;
                 $tp_saida = $saida->tp_saida;
                 $qtd = $saida->quantidade;
                 $this->form->setData($saida);
+                $this->form->getField('prod')->setEditable(false);
+                $this->form-> getField('prod')->setValue($produto_id);
+                $this->form->getField('produto_id')->setEditable(false);
                 $this->form->getField('quantidade')->setEditable(false);
+
+
+                
+                $retorno = Retorno_Cliente::where('saida_id', '=', $saida->id)
+                ->first();
+               
+                if($retorno){
+                    $this->form->getField('quantidade')->setEditable(false);
+                    $this->form->getField('data_saida')->setEditable(false);
+                    $this->form->getField('cliente_id')->setEditable(false);
+                    $this->form->getField('tp_saida')->setEditable(false);
+
+                    $alert = new TAlert('warning', 'Não é possível editar esta saida, pois já existem vinculações.');
+                    $alert->show();
+                }
 
                 // Use a função date_format para formatar a data
                 $data = date_format(date_create($saida->data_saida), 'd/m/Y');
-
+               
                 // Configure o campo de data com a máscara 'dd/mm/yyyy'
                 $dataField = $this->form->getField('data_saida');
                 $dataField->setMask('dd/mm/yyyy');
 
-                $novoValor = $entrada->valor_total;
+                $novoValor = $estoque->valor_total;
 
                 TTransaction::close();
 
@@ -368,8 +389,7 @@ class SaidaForm extends TPage
                 // Preencha os campos do formulário com os valores obtidos
                 TScript::create("document.getElementById('form_nota_fiscal').value = '{$nota_fiscal}';");
                 TScript::create("document.getElementById('form_quantidade_disponivel').value = '{$qtd_disponivel}';");
-                TScript::create("document.getElementById('form_produto').value = '{$produto_id}';");
-                TScript::create("document.getElementById('form_produto_nome').value = '{$produto_nome}';");
+                TScript::create("document.getElementById('form_produto').value = '{$produto}';");
                 TScript::create("document.getElementById('form_data').value = '{$data}';");
                 TScript::create("document.getElementById('form_cliente').value = '{$cliente}';");
                 TScript::create("document.getElementById('form_tp_saida').value = '{$tp_saida}';");

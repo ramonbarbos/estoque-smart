@@ -38,22 +38,24 @@ class EstoqueList extends TPage
         $this->datagrid->width = '100%';
 
         // Add columns to the datagrid
-        $column_id = new DatagridTDataGridColumn('id', 'Cod', 'center');
-        $column_nf = new DatagridTDataGridColumn('nota_fiscal', 'Nota Fiscal', 'center');
-        $column_entrada = new DatagridTDataGridColumn('produto->nome', 'Produto', 'center');
-        $column_qtd = new DatagridTDataGridColumn('quantidade', 'Quantidade', 'center');
-        $column_preco = new DatagridTDataGridColumn('preco_unit', 'Valor unidade', 'center');
-        $column_total = new DatagridTDataGridColumn('valor_total', 'Total', 'center');
+        $column_id = new DatagridTDataGridColumn('id', 'Codigo', 'left');
+        $column_nf = new DatagridTDataGridColumn('nota_fiscal', 'Nota Fiscal', 'left');
+        $column_produto = new DatagridTDataGridColumn('produto->nome', 'Produto', 'left');
+        $column_produto_nome = new DatagridTDataGridColumn('produto->descricao', 'Descricao', 'left');
+        $column_qtd = new DatagridTDataGridColumn('quantidade', 'Quantidade', 'left');
+        $column_preco = new DatagridTDataGridColumn('preco_unit', 'Valor unidade', 'left');
+        $column_total = new DatagridTDataGridColumn('valor_total', 'Total', 'left');
 
         $this->datagrid->addColumn($column_id);
-        $this->datagrid->addColumn($column_entrada);
-        $this->datagrid->addColumn($column_nf);
+        $this->datagrid->addColumn($column_produto);
+        $this->datagrid->addColumn($column_produto_nome);
+        //$this->datagrid->addColumn($column_nf);
         $this->datagrid->addColumn($column_qtd);
         $this->datagrid->addColumn($column_preco);
         $this->datagrid->addColumn($column_total);
 
         $column_nf->setAction(new TAction([$this, 'onReload']), ['order' => 'nota_fiscal']);
-        $column_entrada->setAction(new TAction([$this, 'onReload']), ['order' => 'entrada_id']);
+        $column_produto->setAction(new TAction([$this, 'onReload']), ['order' => 'entrada_id']);
         $column_qtd->setAction(new TAction([$this, 'onReload']), ['order' => 'quantidade']);
         $column_preco->setAction(new TAction([$this, 'onReload']), ['order' => 'preco_unit']);
         $column_total->setAction(new TAction([$this, 'onReload']), ['order' => 'valor_total']);

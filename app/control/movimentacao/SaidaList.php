@@ -14,21 +14,23 @@ use Adianti\Widget\Datagrid\TDataGridAction;
 use Adianti\Widget\Datagrid\TDataGridColumn;
 use Adianti\Widget\Datagrid\TPageNavigation;
 use Adianti\Widget\Dialog\TMessage;
+use Adianti\Widget\Form\TDate;
 use Adianti\Widget\Form\TEntry;
 use Adianti\Widget\Form\TLabel;
 use Adianti\Widget\Util\TDropDown;
 use Adianti\Widget\Util\TXMLBreadCrumb;
 use Adianti\Widget\Wrapper\TDBCombo;
+use Adianti\Widget\Wrapper\TDBUniqueSearch;
 use Adianti\Wrapper\BootstrapDatagridWrapper;
 use Adianti\Wrapper\BootstrapFormBuilder;
 
 class SaidaList extends TPage
 {
-  private $form;
-  private $datagrid;
-  private $pageNavigation;
-  private $formgrid;
-  private $deleteButton;
+  protected $form;
+  protected $datagrid;
+  protected $pageNavigation;
+  protected $formgrid;
+  protected $deleteButton;
 
   use Adianti\base\AdiantiStandardListTrait;
 
@@ -44,29 +46,31 @@ class SaidaList extends TPage
     $this->setDefaultOrder('id', 'asc');
     $this->setLimit(10);
 
-    $this->addFilterField('id', '=', 'id');
-    $this->addFilterField('produto_id', 'like', 'produto_id');
-    $this->addFilterField('nota_fiscal', 'like', 'nota_fiscal');
-  
+    $this->addFilterField('data_saida', '=', 'data_saida');
+    $this->addFilterField('produto_id', '=', 'produto_id');
+    $this->addFilterField('fornecedor_id', '=', 'fornecedor_id');
+
 
     //Criação do formulario 
-    $this->form = new BootstrapFormBuilder('formulario saida');
+    $this->form = new BootstrapFormBuilder('form_search_Saida');
     $this->form->setFormTitle('Saida do Estoque');
 
     //Criação de fields
-    $id = new TEntry('id');
-    $produto = new TEntry('produto_id');
-    $nf = new TEntry('nota_fiscal');
+    $data = new TDate('data_saida');
+    $produto = new TDBUniqueSearch('produto_id', 'sample', 'Produto', 'id', 'nome');
+    $produto->setMinLength(0);
+    $fornecedor = new TDBUniqueSearch('fornecedor_id', 'sample', 'Fornecedor', 'id', 'nome');
+    $fornecedor->setMinLength(0);
 
     //Add filds na tela
-    $this->form->addFields([new TLabel('Codigo')], [$id]);
+    $this->form->addFields([new TLabel('Data')], [$data]);
     $this->form->addFields([new TLabel('Produto')], [$produto]);
-    $this->form->addFields([new TLabel('Nota Fiscal')], [$nf]);
+    $this->form->addFields([new TLabel('Nota Fiscal')], [$fornecedor]);
 
     //Tamanho dos fields
-    $id->setSize('50%');
-    $produto->setSize('50%');
-    $nf->setSize('50%');
+    $data->setSize('50%');
+    $produto->setSize('100%');
+    $fornecedor->setSize('100%');
 
     $this->form->setData(TSession::getValue(__CLASS__ . '_filter_data'));
 
@@ -80,22 +84,19 @@ class SaidaList extends TPage
     $this->datagrid->style = 'width: 100%';
 
     //Criando colunas da datagrid
-    $column_id = new TDataGridColumn('id', 'Cod', 'center');
-    $column_nf = new TDataGridColumn('nota_fiscal', 'Nota Fiscal', 'center');
-    $column_produto = new TDataGridColumn('produto->nome', 'Produto', 'center');
-    $column_dt_saida = new TDataGridColumn('data_saida', 'Data de Saida', 'center');
-    $column_clie = new TDataGridColumn('cliente->nome', 'Cliente', 'center');
-    $column_qtd = new TDataGridColumn('quantidade', 'Quant.', 'center');
-    $column_preco = new TDataGridColumn('preco_unit', 'Valor Unid.', 'center');
-    $column_total = new TDataGridColumn('valor_total', 'Total', 'center');
+    $column_id = new TDataGridColumn('id', 'Codigo', 'left');
+    $column_nf = new TDataGridColumn('nota_fiscal', 'Nota Fiscal', 'left');
+    $column_produto = new TDataGridColumn('produto->nome', 'Produto', 'left');
+    $column_dt_saida = new TDataGridColumn('data_saida', 'Data de Saida', 'left');
+    $column_clie = new TDataGridColumn('cliente->nome', 'Cliente', 'left');
+    $column_qtd = new TDataGridColumn('quantidade', 'Quant.', 'left');
+    $column_total = new TDataGridColumn('valor_total', 'Total', 'left');
 
     $column_dt_saida->setTransformer(function ($value, $object, $row) {
       // Formate a data para o formato desejado (por exemplo, 'd/m/Y')
       return date('d/m/Y', strtotime($value));
     });
-    $column_preco->setTransformer(function ($value, $object, $row) {
-      return 'R$ ' . number_format($value, 2, ',', '.');
-    });
+
     $column_total->setTransformer(function ($value, $object, $row) {
       return 'R$ ' . number_format($value, 2, ',', '.');
     });
@@ -106,7 +107,6 @@ class SaidaList extends TPage
     $this->datagrid->addColumn($column_dt_saida);
     $this->datagrid->addColumn($column_clie);
     $this->datagrid->addColumn($column_qtd);
-    $this->datagrid->addColumn($column_preco);
 
     //Criando ações para o datagrid
     $column_produto->setAction(new TAction([$this, 'onReload']), ['order' => 'produto_id']);
@@ -114,7 +114,6 @@ class SaidaList extends TPage
     $column_dt_saida->setAction(new TAction([$this, 'onReload']), ['order' => 'data_saida']);
     $column_clie->setAction(new TAction([$this, 'onReload']), ['order' => 'cliente_id']);
     $column_qtd->setAction(new TAction([$this, 'onReload']), ['order' => 'quantidade']);
-    $column_preco->setAction(new TAction([$this, 'onReload']), ['order' => 'preco_unit']);
     $column_total->setAction(new TAction([$this, 'onReload']), ['order' => 'valor_total']);
 
     $action1 = new TDataGridAction(['SaidaForm', 'onEdit'], ['id' => '{id}', 'register_state' => 'false']);
@@ -122,7 +121,7 @@ class SaidaList extends TPage
 
     //Adicionando a ação na tela
     $this->datagrid->addAction($action1, _t('Edit'), 'fa:edit blue');
-    //$this->datagrid->addAction($action2, _t('Delete'), 'fa:trash-alt red');
+    $this->datagrid->addAction($action2, 'Excluir/Cancelar', 'fa:trash-alt red');
 
 
     //Criar datagrid 
@@ -162,46 +161,90 @@ class SaidaList extends TPage
     if (isset($param['key'])) {
       // Obtém o ID do estoque a ser excluído
       $id = $param['key']; //ID da saida
-
       TTransaction::open('sample');
-      $retorno = Retorno_Cliente::where('saida_id', '=', $id)
-        ->first();
-      if ($retorno) {
-        $retorno_id =  $retorno->id;
 
-        // Verifica se existem saídas relacionadas a este estoque
-        if ($this->hasRelatedOutbound($retorno_id)) {
-          new TMessage('error', 'Não é possível excluir esta saida, pois existem vinculações.');
-        } else {
-          try {
-            // Exclua o estoque
-            TTransaction::open('sample');
-            $object = new Saida($id);
-            $object->delete();
+      $retornoSaida = new Saida($id);
+      if ($retornoSaida) {
 
-            TTransaction::close();
 
-            // Recarregue a listagem
-            $this->onReload();
-            new TMessage('info', 'Registro excluído com sucesso.');
-          } catch (Exception $e) {
-            new TMessage('error', $e->getMessage());
+
+
+        $retorno = Retorno_Cliente::where('saida_id', '=', $id)
+          ->first();
+        if ($retorno) {
+          $retorno_id =  $retorno->id;
+
+          // Verifica se existem saídas relacionadas a este estoque
+          if ($this->hasRelatedOutbound($retorno_id)) {
+            new TMessage('error', 'Não é possível excluir esta saida, pois existem vinculações.', $this->afterSaveAction);
+          } else {
+            try {
+
+
+              // Verifique se já existe uma entrada no mapa de estoque para esse produto
+              $estoque = Estoque::where('id', '=', $retornoSaida->estoque_id)->load();
+              $estoque = $estoque[0];
+              $novaQuantidade = $estoque->quantidade + $retornoSaida->quantidade;
+              $valor_atual = $estoque->valor_total + $retornoSaida->valor_total;
+              $estoque->valor_total = $valor_atual;
+              $estoque->quantidade = $novaQuantidade;
+              $estoque->store();
+
+              // Exclua o estoque
+              $object = new Saida($id);
+              $object->delete();
+
+
+              // Recarregue a listagem
+              $this->onReload();
+              new TMessage('info', 'Registro excluído com sucesso.', $this->afterSaveAction);
+            } catch (Exception $e) {
+              new TMessage('error', $e->getMessage());
+            }
           }
-        }
-      } else {
-        // Exclua o estoque
-        TTransaction::open('sample');
-        $object = new Saida($id);
-        $object->delete();
+        } else {
+          TTransaction::open('sample');
 
+          // Verifique se já existe uma entrada no mapa de estoque para esse produto
+          $estoque = Estoque::where('id', '=', $retornoSaida->estoque_id)->load();
+          $estoque = $estoque[0];
+          $novaQuantidade = $estoque->quantidade + $retornoSaida->quantidade;
+          $valor_atual = $estoque->valor_total + $retornoSaida->valor_total;
+          $estoque->valor_total = $valor_atual;
+          $estoque->quantidade = $novaQuantidade;
+          $estoque->store();
+
+          // Exclua o estoque
+          $object = new Saida($id);
+          $object->delete();
+
+          new TMessage('info', 'Registro excluído com sucesso.', $this->afterSaveAction);
+
+          // Recarregue a listagem
+          $this->onReload();
+        }
         TTransaction::close();
 
-        // Recarregue a listagem
+
         $this->onReload();
       }
     }
   }
+  public function onCancel($param)
+  {
+    if (isset($param['key'])) {
+      // Obtém o ID do estoque a ser excluído
 
+
+      $id = $param['key'];
+
+      // Abre uma transação
+      TTransaction::open('sample');
+
+
+      TTransaction::close();
+    }
+  }
   private function hasRelatedOutbound($id)
   {
     try {

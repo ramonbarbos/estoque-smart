@@ -12,11 +12,13 @@ use Adianti\Widget\Datagrid\TDataGridAction;
 use Adianti\Widget\Datagrid\TDataGridColumn;
 use Adianti\Widget\Datagrid\TPageNavigation;
 use Adianti\Widget\Dialog\TMessage;
+use Adianti\Widget\Form\TDate;
 use Adianti\Widget\Form\TEntry;
 use Adianti\Widget\Form\TLabel;
 use Adianti\Widget\Util\TDropDown;
 use Adianti\Widget\Util\TXMLBreadCrumb;
 use Adianti\Widget\Wrapper\TDBCombo;
+use Adianti\Widget\Wrapper\TDBUniqueSearch;
 use Adianti\Wrapper\BootstrapDatagridWrapper;
 use Adianti\Wrapper\BootstrapFormBuilder;
 
@@ -44,20 +46,30 @@ class RetornoClienteList extends TPage
 
 
 
-    $this->addFilterField('cliente_id', 'like', 'cliente_id');
+
+    $this->addFilterField('data_retorno', '=', 'data_retorno');
+    $this->addFilterField('produto_id', '=', 'produto_id');
+    $this->addFilterField('cliente_id', '=', 'cliente_id');
 
     //Criação do formulario 
-    $this->form = new BootstrapFormBuilder('formulario retorno_cliente');
+    $this->form = new BootstrapFormBuilder('form_search_Retorno_Cliente');
     $this->form->setFormTitle('Devolução do Cliente');
 
-    //Criação de fields
-    $cliente = new TEntry('cliente_id');
+          //Criação de fields
+          $data = new TDate('data_retorno');
+          $produto = new TDBUniqueSearch('produto_id', 'sample', 'Produto', 'id', 'nome');
+          $produto->setMinLength(0);
+          $cliente = new TDBUniqueSearch('cliente_id', 'sample', 'Cliente', 'id', 'nome');
+          $cliente->setMinLength(0);
+  
+          //Add filds na tela
+          $this->form->addFields([new TLabel('Data')], [$data]);
+          $this->form->addFields([new TLabel('Produto')], [$produto]);
+          $this->form->addFields([new TLabel('Cliente')], [$cliente]);
 
-    //Add filds na tela
-    $this->form->addFields([new TLabel('Cliente')], [$cliente]);
+   //Tamanho dos fields
+   $data->setSize('50%');
 
-    //Tamanho dos fields
-    $cliente->setSize('100%');
 
     $this->form->setData(TSession::getValue(__CLASS__ . '_filter_data'));
 

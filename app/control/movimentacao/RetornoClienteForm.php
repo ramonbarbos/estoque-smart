@@ -50,7 +50,7 @@ class RetornoClienteForm extends TPage
 
         // Criação do formulário
         $this->form = new BootstrapFormBuilder('form_retorno');
-        $this->form->setFormTitle('Retorno cliente');
+        $this->form->setFormTitle('Retorno de Saida');
         $this->form->setClientValidation(true);
         $this->form->setColumnClasses(2, ['col-sm-5 col-lg-4', 'col-sm-7 col-lg-8']);
 
@@ -125,8 +125,7 @@ class RetornoClienteForm extends TPage
 
         // Adicione fields ao formulário
         $this->form->addFields([new TLabel('Id')], [$id]);
-        $this->form->addFields([new TLabel('Retirado')], [$entrada, $entrada_id],);
-        $this->form->addFields([new TLabel('Produto')], [$produto, $produto_nome],);
+        $this->form->addFields([new TLabel('Saida')], [$entrada, $entrada_id,$produto_nome,$produto],);
         $this->form->addFields([new TLabel('Nota Fiscal')], [$nf]);
         $this->form->addFields([new TLabel('Data de Retorno')], [$datas]);
         $this->form->addFields([new TLabel('Cliente')], [$cliente_nome, $cliente]);
@@ -153,6 +152,7 @@ class RetornoClienteForm extends TPage
         $cliente_nome->setEditable(false);
         $cliente->style = 'display: none;';
         $entrada_id->style = 'display: none;';
+        $produto->style = 'display: none;';
         // Tamanho dos campos
         $id->setSize('100%');
         $entrada->setSize('50%');
@@ -392,6 +392,7 @@ class RetornoClienteForm extends TPage
                 $qtd = $retorno->quantidade;
                 $this->form->setData($retorno);
                 $this->form->getField('quantidade')->setEditable(false);
+                $this->form->getField('saida_id')->setEditable(false);
 
                 // Use a função date_format para formatar a data
                 $data = date_format(date_create($retorno->data_retorno), 'd/m/Y');
