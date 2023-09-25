@@ -209,16 +209,17 @@ class RetornoClienteList extends TPage
 
 
         try {
-          // Exclua o estoque
           TTransaction::open('sample');
-          $object = new Retorno_Cliente($id);
+          $retorno = new Retorno_Cliente($id);
           
 
-          $saida = Saida::where('id', '=', $object->saida_id)
+          $saida = Saida::where('id', '=', $retorno->saida_id)
             ->first();
-          $saida->quant_retirada = $saida->quant_retirada+ $object->quantidade;
+          $saida->quant_retirada = $saida->quant_retirada+ $retorno->quantidade;
           $saida->store();
-          $object->delete();
+          $this->createDeleteMovement($retorno);
+          
+          $retorno->delete();
           TTransaction::close();
 
           // Recarregue a listagem
@@ -234,5 +235,24 @@ class RetornoClienteList extends TPage
 
       TTransaction::close();
     }
+  }
+  private function createDeleteMovement($retorno)
+  {
+      //GRAVANDO MOVIMENTAÇÃO
+      $mov = new Movimentacoes();
+      $usuario_logado = TSession::getValue('userid');
+      $descricao = 'Exclusão de Retorno ' . $retorno->produto_nome . ' - ' . $retorno->quantidade . ' unidades - NF:' . $retorno->nota_fiscal;
+
+      $estoque = Estoque::where('produto_id', '=', $retorno->produto_id)->first();
+
+      $mov->data_hora = date('Y-m-d H:i:s');
+      $mov->descricao = $descricao;
+      $mov->produto_id = $retorno->produto_id;
+      $mov->responsavel_id = $usuario_logado;
+      $mov->saldoEstoque = $estoque->valor_total ?? 0; 
+      $mov->quantidade = $retorno->quantidade ?? 0; 
+      $mov->valor_total = $retorno->valor_total ?? 0; 
+
+      $mov->store(); 
   }
 }

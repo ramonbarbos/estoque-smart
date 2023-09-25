@@ -180,6 +180,9 @@ class SaidaList extends TPage
           } else {
             try {
 
+              // Exclua o estoque
+              $saida = new Saida($id);
+              $this->createDeleteMovement($saida);
 
               // Verifique se já existe uma entrada no mapa de estoque para esse produto
               $estoque = Estoque::where('id', '=', $retornoSaida->estoque_id)->load();
@@ -190,9 +193,8 @@ class SaidaList extends TPage
               $estoque->quantidade = $novaQuantidade;
               $estoque->store();
 
-              // Exclua o estoque
-              $object = new Saida($id);
-              $object->delete();
+             
+              $saida->delete();
 
 
               // Recarregue a listagem
@@ -205,6 +207,9 @@ class SaidaList extends TPage
         } else {
           TTransaction::open('sample');
 
+          // Exclua o estoque
+          $saida = new Saida($id);
+          $this->createDeleteMovement($saida);
           // Verifique se já existe uma entrada no mapa de estoque para esse produto
           $estoque = Estoque::where('id', '=', $retornoSaida->estoque_id)->load();
           $estoque = $estoque[0];
@@ -214,9 +219,8 @@ class SaidaList extends TPage
           $estoque->quantidade = $novaQuantidade;
           $estoque->store();
 
-          // Exclua o estoque
-          $object = new Saida($id);
-          $object->delete();
+          
+          $saida->delete();
 
           new TMessage('info', 'Registro excluído com sucesso.', $this->afterSaveAction);
 
@@ -230,6 +234,35 @@ class SaidaList extends TPage
       }
     }
   }
+
+  private function createDeleteMovement($saida)
+    {
+      try{
+        TTransaction::open('sample');
+
+        //GRAVANDO MOVIMENTAÇÃO
+        $mov = new Movimentacoes();
+        $usuario_logado = TSession::getValue('userid');
+        $descricao = 'Exclusão de Saida ' . $saida->produto_nome . ' - ' . $saida->quantidade . ' unidades - NF:' . $saida->nota_fiscal;
+
+        $estoque = Estoque::where('produto_id', '=', $saida->produto_id)->first();
+
+        $mov->data_hora = date('Y-m-d H:i:s');
+        $mov->descricao = $descricao;
+        $mov->produto_id = $saida->produto_id;
+        $mov->responsavel_id = $usuario_logado;
+        $mov->saldoEstoque = $estoque->valor_total ?? 0; 
+        $mov->quantidade = $saida->quantidade ?? 0; 
+        $mov->valor_total = $saida->valor_total ?? 0; 
+
+        $mov->store(); 
+        TTransaction::close();
+      } catch (Exception $e) {
+        new TMessage('error', $e->getMessage());
+        TTransaction::rollback();
+    }
+
+    }
   public function onCancel($param)
   {
     if (isset($param['key'])) {

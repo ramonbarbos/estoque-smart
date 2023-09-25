@@ -116,10 +116,12 @@ class RetornoFornecedorList extends TPage
 
     $action1 = new TDataGridAction(['RetornoFornecedorForm', 'onEdit'], ['id' => '{id}', 'register_state' => 'false']);
     $action2 = new TDataGridAction([$this, 'onDelete'], ['id' => '{id}']);
+    $action3 = new TDataGridAction([$this, 'onCancel'], ['id' => '{id}']);
 
     //Adicionando a ação na tela
     $this->datagrid->addAction($action1, _t('Edit'), 'fa:edit blue');
    // $this->datagrid->addAction($action2, _t('Delete'), 'fa:trash-alt red');
+   $this->datagrid->addAction($action3, _t('Cancel'), 'fa:solid fa-ban black');
 
 
     //Criar datagrid 
@@ -152,5 +154,79 @@ class RetornoFornecedorList extends TPage
     $container->add($panel);
 
     parent::add($container);
+  }
+  public function onCancel($param)
+  {
+    if (isset($param['key'])) {
+      // Obtém o ID do estoque a ser excluído
+
+
+      $id = $param['key'];
+
+      // Abre uma transação
+      TTransaction::open('sample');
+
+      // Obtém a devolução do cliente pelo ID
+      $retorno = new Retorno_Fornecedor($id);
+      if ($retorno) {
+
+
+        // Verifique se já existe uma entrada no mapa de estoque para esse produto
+        $estoque = Estoque::where('produto_id', '=', $retorno->produto_id)->load();
+        $estoque = $estoque[0];
+        $novaQuantidade = $estoque->quantidade + $retorno->quantidade;
+        $valor_atual = $estoque->valor_total + $retorno->valor_total;
+        $estoque->valor_total = $valor_atual;
+        $estoque->quantidade = $novaQuantidade;
+
+        
+        $estoque->store();
+
+
+
+        try {
+          
+
+          $entrada = Entrada::where('id', '=', $retorno->entrada_id)
+            ->first();
+          $entrada->quant_retirada = $entrada->quant_retirada+ $retorno->quantidade;
+          $entrada->store();
+          $this->createDeleteMovement($retorno);
+          
+          $retorno->delete();
+          TTransaction::close();
+
+          // Recarregue a listagem
+          $this->onReload();
+          new TMessage('info', 'Registro cancelado com sucesso.');
+        } catch (Exception $e) {
+          new TMessage('error', $e->getMessage());
+        }
+
+
+        $this->onReload();
+      }
+
+      TTransaction::close();
+    }
+  }
+  private function createDeleteMovement($retorno)
+  {
+      //GRAVANDO MOVIMENTAÇÃO
+      $mov = new Movimentacoes();
+      $usuario_logado = TSession::getValue('userid');
+      $descricao = 'Exclusão de Retorno ao Fornecedor ' . $retorno->produto_nome . ' - ' . $retorno->quantidade . ' unidades - NF:' . $retorno->nota_fiscal;
+
+      $estoque = Estoque::where('produto_id', '=', $retorno->produto_id)->first();
+
+      $mov->data_hora = date('Y-m-d H:i:s');
+      $mov->descricao = $descricao;
+      $mov->produto_id = $retorno->produto_id;
+      $mov->responsavel_id = $usuario_logado;
+      $mov->saldoEstoque = $estoque->valor_total ?? 0; 
+      $mov->quantidade = $retorno->quantidade ?? 0; 
+      $mov->valor_total = $retorno->valor_total ?? 0; 
+
+      $mov->store(); 
   }
 }

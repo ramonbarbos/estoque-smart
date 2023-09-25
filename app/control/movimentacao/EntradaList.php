@@ -169,10 +169,9 @@ class EntradaList extends TPage
 
                 $id = $param['key'];
 
-
-
                 TTransaction::open('sample');
-                $estoque = Estoque::where('entrada_id', '=', $id)
+                $entrada = new Entrada($id);
+                $estoque = Estoque::where('produto_id', '=', $entrada->produto_id)
                     ->first();
 
                 if ($estoque) {
@@ -180,42 +179,61 @@ class EntradaList extends TPage
                     $estoque_id = $estoque->id;
                     // Verifica se existem saídas relacionadas a este estoque
                     if ($this->hasRelatedOutbound($estoque_id)) {
-                        new TMessage('error', 'Não é possível excluir este estoque, pois existem vinculações.');
+                        new TMessage('error', 'Não é possível excluir esta entrada, pois existem vinculações.');
                     } else {
-                        try {
-                            // Exclua o estoque
-                            TTransaction::open('sample');
-                            $object = new Entrada($id);
-                            $object->delete();
-                            $object = new Estoque($estoque_id);
-                            $object->delete();
-                            TTransaction::close();
+                    
+                            $entrada = new Entrada($id);
+                            $this->createDeleteMovement($entrada);
+                            $this->retiraSaldo($entrada);
+                            $entrada->delete();
 
                             // Recarregue a listagem
                             $this->onReload();
                             new TMessage('info', 'Registro excluído com sucesso.', $this->afterSaveAction);
-                        } catch (Exception $e) {
-                            new TMessage('error', $e->getMessage());
-                        }
+                      
                     }
-                } else {
-                    try {
-                        TTransaction::open('sample');
-                        $object = new Entrada($id);
-                        $object->delete();
-                        TTransaction::close();
-                        // Recarregue a listagem
-                        $this->onReload();
-                        new TMessage('info', 'Registro excluído com sucesso.', $this->afterSaveAction);
-                    } catch (Exception $e) {
-                        new TMessage('error', $e->getMessage());
-                    }
-                }
+                } 
             }
+
+            TTransaction::close();
         } catch (Exception $e) {
             new TMessage('error', $e->getMessage());
             TTransaction::rollback();
         }
+    }
+
+    private function createDeleteMovement($entrada)
+    {
+        //GRAVANDO MOVIMENTAÇÃO
+        $mov = new Movimentacoes();
+        $usuario_logado = TSession::getValue('userid');
+        $descricao = 'Exclusão de Entrada ' . $entrada->produto_nome . ' - ' . $entrada->quantidade . ' unidades - NF:' . $entrada->nota_fiscal;
+
+        $estoque = Estoque::where('produto_id', '=', $entrada->produto_id)->first();
+
+        $mov->data_hora = date('Y-m-d H:i:s');
+        $mov->descricao = $descricao;
+        $mov->produto_id = $entrada->produto_id;
+        $mov->responsavel_id = $usuario_logado;
+        $mov->saldoEstoque = $estoque->valor_total ?? 0; 
+        $mov->quantidade = $entrada->quantidade ?? 0; 
+        $mov->valor_total = $entrada->valor_total ?? 0; 
+
+        $mov->store(); 
+    }
+    private function retiraSaldo($entrada)
+    {
+        TTransaction::open('sample');
+
+          // Verifique se já existe uma entrada no mapa de estoque para esse produto
+          $estoque = Estoque::where('produto_id', '=', $entrada->produto_id)->first();
+          $novaQuantidade = $estoque->quantidade - $entrada->quantidade;
+          $valor_atual = $estoque->valor_total - $entrada->valor_total;
+          $estoque->valor_total = $valor_atual;
+          $estoque->quantidade = $novaQuantidade;
+          $estoque->store();
+          TTransaction::close();
+
     }
 
     private function hasRelatedOutbound($id)

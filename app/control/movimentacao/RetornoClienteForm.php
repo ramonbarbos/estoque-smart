@@ -8,6 +8,7 @@ use Adianti\Database\TCriteria;
 use Adianti\Database\TFilter;
 use Adianti\Database\TRepository;
 use Adianti\Database\TTransaction;
+use Adianti\Registry\TSession;
 use Adianti\Validator\TRequiredValidator;
 use Adianti\Widget\Base\TScript;
 use Adianti\Widget\Container\THBox;
@@ -308,6 +309,7 @@ class RetornoClienteForm extends TPage
                 // Salve o registro de retorno do cliente
                 $retorno->store();
 
+                $this->createMovement($retorno);
                 TTransaction::close();
 
                 new TMessage('info', AdiantiCoreTranslator::translate('Record saved'), $this->afterSaveAction);
@@ -315,6 +317,34 @@ class RetornoClienteForm extends TPage
                 TTransaction::close();
                 throw new Exception('Não foi encontrada uma entrada correspondente no mapa de estoque para esta saída.');
             }
+        } catch (Exception $e) {
+            new TMessage('error', $e->getMessage());
+            TTransaction::rollback();
+        }
+    }
+    
+    private function createMovement($retorno)
+    {
+        try {
+            //GRAVANDO MOVIMENTAÇÃO
+            $mov = new Movimentacoes();
+            $prod = new Produto($retorno->produto_id);
+            $usuario_logado = TSession::getValue('userid');
+            $descricao = 'Retorno de Saida ' . $prod->nome . ' - ' . $retorno->quantidade . ' unidades - NF:' . $retorno->nota_fiscal;
+            $mov->data_hora = $retorno->data_retorno;
+            $mov->descricao = $descricao;
+            $mov->valor_total = $retorno->valor_total;
+            $mov->produto_id = $retorno->produto_id;
+            $mov->responsavel_id = $usuario_logado;
+            $mov->quantidade = $retorno->quantidade;
+
+            $estoque = Estoque::where('produto_id', '=', $retorno->produto_id)->first();
+            if ($estoque->valor_total) {
+                $mov->saldoEstoque = $estoque->valor_total;
+            } else {
+                $mov->saldoEstoque = 0;
+            }
+            $mov->store();
         } catch (Exception $e) {
             new TMessage('error', $e->getMessage());
             TTransaction::rollback();

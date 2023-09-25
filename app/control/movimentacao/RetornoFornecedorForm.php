@@ -8,6 +8,7 @@ use Adianti\Database\TCriteria;
 use Adianti\Database\TFilter;
 use Adianti\Database\TRepository;
 use Adianti\Database\TTransaction;
+use Adianti\Registry\TSession;
 use Adianti\Validator\TRequiredValidator;
 use Adianti\Widget\Base\TScript;
 use Adianti\Widget\Container\THBox;
@@ -280,6 +281,7 @@ class RetornoFornecedorForm extends TPage
 
             }
 
+            $this->createMovement($retorno);
 
 
             TTransaction::close();
@@ -290,6 +292,37 @@ class RetornoFornecedorForm extends TPage
         }
     }
 
+    private function createMovement($retorno)
+    {
+        try {
+            TTransaction::open('sample');
+
+            //GRAVANDO MOVIMENTAÇÃO
+            $mov = new Movimentacoes();
+            $prod = new Produto($retorno->produto_id);
+            $usuario_logado = TSession::getValue('userid');
+            $descricao = 'Retorno de Entrada ' . $prod->nome . ' - ' . $retorno->quantidade . ' unidades - NF:' . $retorno->nota_fiscal;
+            $mov->data_hora = $retorno->data_retorno;
+            $mov->descricao = $descricao;
+            $mov->valor_total = $retorno->valor_total;
+            $mov->produto_id = $retorno->produto_id;
+            $mov->responsavel_id = $usuario_logado;
+            $mov->quantidade = $retorno->quantidade;
+
+            $estoque = Estoque::where('produto_id', '=', $retorno->produto_id)->first();
+            if ($estoque->valor_total) {
+                $mov->saldoEstoque = $estoque->valor_total;
+            } else {
+                $mov->saldoEstoque = 0;
+            }
+            $mov->store();
+            TTransaction::close();
+
+        } catch (Exception $e) {
+            new TMessage('error', $e->getMessage());
+            TTransaction::rollback();
+        }
+    }
     private function atualizarEstoque($entrada_id, $quantidadeVendida)
     {
         try {

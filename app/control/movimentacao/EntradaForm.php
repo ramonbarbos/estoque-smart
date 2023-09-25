@@ -5,6 +5,7 @@ use Adianti\Control\TPage;
 use Adianti\Core\AdiantiCoreApplication;
 use Adianti\Core\AdiantiCoreTranslator;
 use Adianti\Database\TTransaction;
+use Adianti\Registry\TSession;
 use Adianti\Validator\TRequiredValidator;
 use Adianti\Widget\Base\TScript;
 use Adianti\Widget\Container\THBox;
@@ -88,11 +89,11 @@ class EntradaForm extends TPage
 
         // Adicione fields ao formulário
         $this->form->addFields([new TLabel('Codigo')], [$id],);
-        $this->form->addFields([new TLabel('Produto')],[$produto] );
-        $this->form->addFields([new TLabel('Fornecedor')], [$fornecedor],[new TLabel('Nota Fiscal')], [$nf]);
-        $this->form->addFields([new TLabel('Data de Entrega')], [$data],[new TLabel('Tipo')], [$tp_entrada]);
+        $this->form->addFields([new TLabel('Produto')], [$produto]);
+        $this->form->addFields([new TLabel('Fornecedor')], [$fornecedor], [new TLabel('Nota Fiscal')], [$nf]);
+        $this->form->addFields([new TLabel('Data de Entrega')], [$data], [new TLabel('Tipo')], [$tp_entrada]);
         $this->form->addFields();
-        $this->form->addFields([new TLabel('Quantidade')], [$qtd],[new TLabel('Valor unidade')], [$valor],[new TLabel('Valor Total')], [$total]);
+        $this->form->addFields([new TLabel('Quantidade')], [$qtd], [new TLabel('Valor unidade')], [$valor], [new TLabel('Valor Total')], [$total]);
         $this->form->addFields();
         $this->form->addFields();
 
@@ -103,6 +104,7 @@ class EntradaForm extends TPage
         $tp_entrada->addValidation('Tipo de Entrada', new TRequiredValidator);
         $qtd->addValidation('Quantidade', new TRequiredValidator);
         $valor->addValidation('Total', new TRequiredValidator);
+        $nf->addValidation('Nota Fiscal', new TRequiredValidator);
 
         // Tornar o campo ID não editável
         $id->setEditable(false);
@@ -118,7 +120,7 @@ class EntradaForm extends TPage
         $data->setDatabaseMask('yyyy-mm-dd');
         $nf->setNumericMask(2, '', '', true);
         $valor->setSize('100%');
-        $valor->setNumericMask(2, '.', '.', true);
+        $valor->setNumericMask(2, '.', '', true);
         $total->setSize('100%');
 
         TScript::create('function calcularValorTotal() {
@@ -204,19 +206,16 @@ class EntradaForm extends TPage
 
                     $valorTotal = $mapaEstoque->valor_total;
                     $QuantidadeTotal = $mapaEstoque->quantidade;
-                  
+
 
                     $mapaEstoque->quantidade += $quantidade;
                     $mapaEstoque->quant_retirada += $quantidade;
                     $mapaEstoque->updated_at = date('Y-m-d H:i:s');
 
-                    $mediaPonderadaEstoque = ($entrada->valor_total + $valorTotal) /( $quantidade+ $QuantidadeTotal) ;
+                    $mediaPonderadaEstoque = ($entrada->valor_total + $valorTotal) / ($quantidade + $QuantidadeTotal);
                     $mapaEstoque->valor_total = $mapaEstoque->quantidade * $mediaPonderadaEstoque;
                     $mapaEstoque->preco_unit = $mediaPonderadaEstoque;
                     $mapaEstoque->store();
-
-                    
-                   
                 } else {
                     $mapaEstoque = new Estoque();
                     $mapaEstoque->produto_id = $entrada->produto_id;
@@ -232,6 +231,8 @@ class EntradaForm extends TPage
                 }
             }
 
+            $this->createMovement($entrada);
+
             TTransaction::close();
             new TMessage('info', AdiantiCoreTranslator::translate('Record saved'), $this->afterSaveAction);
         } catch (Exception $e) {
@@ -241,7 +242,33 @@ class EntradaForm extends TPage
     }
 
 
+    private function createMovement($entrada)
+    {
+        try {
+            //GRAVANDO MOVIMENTAÇÃO
+            $mov = new Movimentacoes();
+            $prod = new Produto($entrada->produto_id);
+            $usuario_logado = TSession::getValue('userid');
+            $descricao = 'Entrada de ' . $prod->nome . ' - ' . $entrada->quantidade . ' unidades - NF:' . $entrada->nota_fiscal;
+            $mov->data_hora = $entrada->data_entrada;
+            $mov->descricao = $descricao;
+            $mov->valor_total = $entrada->valor_total;
+            $mov->produto_id = $entrada->produto_id;
+            $mov->responsavel_id = $usuario_logado;
+            $mov->quantidade = $entrada->quantidade;
 
+            $estoque = Estoque::where('produto_id', '=', $entrada->produto_id)->first();
+            if ($estoque->valor_total) {
+                $mov->saldoEstoque = $estoque->valor_total;
+            } else {
+                $mov->saldoEstoque = 0;
+            }
+            $mov->store();
+        } catch (Exception $e) {
+            new TMessage('error', $e->getMessage());
+            TTransaction::rollback();
+        }
+    }
     public  function onEdit($param)
     {
         try {
