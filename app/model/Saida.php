@@ -33,4 +33,8 @@ class Saida extends TRecord
     {
         return Cliente::find($this->cliente_id);
     }
+    public function get_tipo()
+    {
+        return Tipo_Saida::find($this->tp_saida);
+    }
 }

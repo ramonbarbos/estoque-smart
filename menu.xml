@@ -45,6 +45,10 @@
         <action>EstoqueRelatorio</action>
         <icon>fa fa fa-fw fa-fw</icon>
       </menuitem>
+      <menuitem label="Movimentação do Estoque">
+        <action>MovimentacaoRelatorio</action>
+        <icon>fa fa fa-fw fa-fw</icon>
+      </menuitem>
     </menu>
   </menuitem>
   <menuitem label="Ajustes">

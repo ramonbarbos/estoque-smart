@@ -207,7 +207,8 @@ class EntradaList extends TPage
         //GRAVANDO MOVIMENTAÇÃO
         $mov = new Movimentacoes();
         $usuario_logado = TSession::getValue('userid');
-        $descricao = 'Exclusão de Entrada ' . $entrada->produto_nome . ' - ' . $entrada->quantidade . ' unidades - NF:' . $entrada->nota_fiscal;
+        $descricao = 'Exclusão de Entrada';
+
 
         $estoque = Estoque::where('produto_id', '=', $entrada->produto_id)->first();
 

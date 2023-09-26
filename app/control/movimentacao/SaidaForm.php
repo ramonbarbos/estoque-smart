@@ -292,8 +292,9 @@ class SaidaForm extends TPage
             $mov = new Movimentacoes();
             $prod = new Produto($saida->produto_id);
             $usuario_logado = TSession::getValue('userid');
-            $descricao = 'Saida de ' . $prod->nome . ' - ' . $saida->quantidade . ' unidades - NF:' . $saida->nota_fiscal;
-            $mov->data_hora = $saida->data_saida;
+            $desc =  $saida->tipo->nome.' - ' .$saida->cliente->nome;
+            $descricao = substr($desc, 0, 30) . '...'; 
+            $mov->data_hora = date('Y-m-d H:i:s');
             $mov->descricao = $descricao;
             $mov->valor_total = $saida->valor_total;
             $mov->produto_id = $saida->produto_id;

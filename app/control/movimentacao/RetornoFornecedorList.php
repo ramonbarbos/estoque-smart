@@ -215,8 +215,8 @@ class RetornoFornecedorList extends TPage
       //GRAVANDO MOVIMENTAÇÃO
       $mov = new Movimentacoes();
       $usuario_logado = TSession::getValue('userid');
-      $descricao = 'Exclusão de Retorno ao Fornecedor ' . $retorno->produto_nome . ' - ' . $retorno->quantidade . ' unidades - NF:' . $retorno->nota_fiscal;
-
+      $desc = 'Exclusão de devolução - '  .$retorno->fornecedor->nome;
+      $descricao = substr($desc, 0, 30) . '...'; 
       $estoque = Estoque::where('produto_id', '=', $retorno->produto_id)->first();
 
       $mov->data_hora = date('Y-m-d H:i:s');

@@ -247,10 +247,11 @@ class EntradaForm extends TPage
         try {
             //GRAVANDO MOVIMENTAÇÃO
             $mov = new Movimentacoes();
-            $prod = new Produto($entrada->produto_id);
             $usuario_logado = TSession::getValue('userid');
-            $descricao = 'Entrada de ' . $prod->nome . ' - ' . $entrada->quantidade . ' unidades - NF:' . $entrada->nota_fiscal;
-            $mov->data_hora = $entrada->data_entrada;
+            $desc = $entrada->tipo->nome.' - '. $entrada->fornecedor->nome;
+            $descricao = substr($desc, 0, 30) . '...'; 
+            $mov->data_hora = date('Y-m-d H:i:s');;
+            $mov->tipo = $entrada->tipo->nome;
             $mov->descricao = $descricao;
             $mov->valor_total = $entrada->valor_total;
             $mov->produto_id = $entrada->produto_id;

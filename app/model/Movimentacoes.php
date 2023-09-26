@@ -14,10 +14,11 @@ class Movimentacoes extends TRecord
         // Adicione os atributos normais
         parent::addAttribute('data_hora');
         parent::addAttribute('descricao');
+        parent::addAttribute('tipo');
+        parent::addAttribute('produto_id');
         parent::addAttribute('quantidade');
         parent::addAttribute('valor_total');
         parent::addAttribute('saldoEstoque');
-        parent::addAttribute('produto_id');
         parent::addAttribute('responsavel_id');
 
         // Configurar os campos de timestamps
@@ -25,7 +26,18 @@ class Movimentacoes extends TRecord
 
         $this->created_at = date('Y-m-d H:i:s');
     }
-
+    public function get_produto()
+    {
+        return Produto::find($this->produto_id);
+    }
+    public function get_user()
+    {
+        return SystemUser::find($this->responsavel_id);
+    }
+    public function get_tipo()
+    {
+        return Tipo_Entrada::find($this->tipo);
+    }
     // Sobrescreva o método store para definir a data de atualização
     public function store()
     {

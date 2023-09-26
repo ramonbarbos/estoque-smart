@@ -241,7 +241,7 @@ class RetornoClienteList extends TPage
       //GRAVANDO MOVIMENTAÇÃO
       $mov = new Movimentacoes();
       $usuario_logado = TSession::getValue('userid');
-      $descricao = 'Exclusão de Retorno ' . $retorno->produto_nome . ' - ' . $retorno->quantidade . ' unidades - NF:' . $retorno->nota_fiscal;
+      $descricao = 'Exclusão de Devolução';
 
       $estoque = Estoque::where('produto_id', '=', $retorno->produto_id)->first();
 

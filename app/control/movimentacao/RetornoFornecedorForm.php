@@ -301,8 +301,9 @@ class RetornoFornecedorForm extends TPage
             $mov = new Movimentacoes();
             $prod = new Produto($retorno->produto_id);
             $usuario_logado = TSession::getValue('userid');
-            $descricao = 'Retorno de Entrada ' . $prod->nome . ' - ' . $retorno->quantidade . ' unidades - NF:' . $retorno->nota_fiscal;
-            $mov->data_hora = $retorno->data_retorno;
+            $desc = 'Devolução - ' .$retorno->fornecedor->nome;
+            $descricao = substr($desc, 0, 30) . '...'; 
+            $mov->data_hora = date('Y-m-d H:i:s');
             $mov->descricao = $descricao;
             $mov->valor_total = $retorno->valor_total;
             $mov->produto_id = $retorno->produto_id;
