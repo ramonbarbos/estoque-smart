@@ -118,7 +118,7 @@ class MovimentacaoRelatorio extends TPage
                         $table->addCell('Descrição', 'center', 'title',1);
                         $table->addCell('Produto', 'center', 'title',1);
                         $table->addCell('Quant.', 'center', 'title',1);
-                        $table->addCell('Valor Total', 'center', 'title',1);
+                        $table->addCell('Preço', 'center', 'title',1);
                         $table->addCell('Estoque', 'center', 'title',1);
                         $table->addCell('Responsável', 'center', 'title',1);
                     });
@@ -137,8 +137,8 @@ class MovimentacaoRelatorio extends TPage
                         $table->addCell($movs->descricao, 'center', $style);
                         $table->addCell($movs->produto->nome, 'center', $style, );
                         $table->addCell($movs->quantidade, 'center', $style);
-                        $table->addCell('R$ '.$movs->valor_total, 'center', $style);
-                        $table->addCell('R$ '.$movs->saldoEstoque, 'center', $style);
+                        $table->addCell('R$ '.$movs->preco_unit, 'center', $style);
+                        $table->addCell('R$ '.$movs->saldo_anterior, 'center', $style);
                         $table->addCell($movs->user->name, 'center', $style);
 
                         $colour = !$colour;

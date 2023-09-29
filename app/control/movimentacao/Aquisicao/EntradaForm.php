@@ -360,6 +360,7 @@ class EntradaForm extends TPage
                         $item->store();
                         $total += $item->total;
                         $this->insertEstoque($item, $item->total, $item->quantidade);
+                        $this->createMovement($item);
                     }
                 }
 
@@ -424,9 +425,7 @@ class EntradaForm extends TPage
     }
     public static function onMutationAction($param)
     {
-        // Form data: $param['form_data']
-        // List data: $param['list_data']
-        //echo '<pre>';var_dump($param);
+  
         $total = 0;
 
         if ($param['list_data']) {
@@ -437,7 +436,7 @@ class EntradaForm extends TPage
 
         TToast::show('info', 'Novo total: <b>' . 'R$ ' . number_format($total, 2, ',', '.') . '</b>', 'bottom right');
     }
-    // Função para verificar se há valores negativos em um array
+
     private function hasNegativeValues($array)
     {
         foreach ($array as $value) {
@@ -448,7 +447,37 @@ class EntradaForm extends TPage
         return false;
     }
 
-    // Método fechar
+    private function createMovement($info)
+    {
+        try {
+            TTransaction::open('sample');
+            //GRAVANDO MOVIMENTAÇÃO
+            $mov = new Movimentacoes();
+            $entrada = new Entrada($info->entrada_id);
+            $usuario_logado = TSession::getValue('userid');
+            $desc =  $entrada->tipo->nome.' - ' .$entrada->fornecedor->nome;
+            $descricao = substr($desc, 0, 30) . '...'; 
+            $mov->data_hora = date('Y-m-d H:i:s');
+            $mov->descricao = $descricao;
+            $mov->preco_unit = $info->preco_unit;
+            $mov->produto_id = $info->produto_id;
+            $mov->responsavel_id = $usuario_logado;
+            $mov->quantidade = $info->quantidade;
+
+            $estoque = Estoque::where('produto_id', '=', $info->produto_id)->first();
+            if ($estoque->valor_total > 0) {
+                $mov->saldo_anterior = $estoque->valor_total;
+            } else {
+                $mov->saldo_anterior = 0;
+            }
+            $mov->store();
+            TTransaction::close();
+        } catch (Exception $e) {
+            new TMessage('error', $e->getMessage());
+            TTransaction::rollback();
+        }
+    }
+
     public function onClose($param)
     {
         TScript::create("Template.closeRightPanel()");

@@ -17,8 +17,9 @@ class Movimentacoes extends TRecord
         parent::addAttribute('tipo');
         parent::addAttribute('produto_id');
         parent::addAttribute('quantidade');
-        parent::addAttribute('valor_total');
-        parent::addAttribute('saldoEstoque');
+        parent::addAttribute('preco_unit');
+        parent::addAttribute('saldo_anterior');
+        parent::addAttribute('saldo_atual');
         parent::addAttribute('responsavel_id');
 
         // Configurar os campos de timestamps
