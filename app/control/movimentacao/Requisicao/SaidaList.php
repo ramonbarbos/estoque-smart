@@ -47,8 +47,6 @@ class SaidaList extends TPage
     $this->setLimit(10);
 
     $this->addFilterField('data_saida', '=', 'data_saida');
-    $this->addFilterField('produto_id', '=', 'produto_id');
-    $this->addFilterField('fornecedor_id', '=', 'fornecedor_id');
 
 
     //Criação do formulario 
@@ -57,19 +55,14 @@ class SaidaList extends TPage
 
     //Criação de fields
     $data = new TDate('data_saida');
-    $produto = new TDBUniqueSearch('produto_id', 'sample', 'Produto', 'id', 'nome');
-    $produto->setMinLength(0);
     $fornecedor = new TDBUniqueSearch('fornecedor_id', 'sample', 'Fornecedor', 'id', 'nome');
     $fornecedor->setMinLength(0);
 
     //Add filds na tela
     $this->form->addFields([new TLabel('Data')], [$data]);
-    $this->form->addFields([new TLabel('Produto')], [$produto]);
-    $this->form->addFields([new TLabel('Nota Fiscal')], [$fornecedor]);
 
     //Tamanho dos fields
     $data->setSize('50%');
-    $produto->setSize('100%');
     $fornecedor->setSize('100%');
 
     $this->form->setData(TSession::getValue(__CLASS__ . '_filter_data'));
@@ -85,11 +78,8 @@ class SaidaList extends TPage
 
     //Criando colunas da datagrid
     $column_id = new TDataGridColumn('id', 'Codigo', 'left');
-    $column_nf = new TDataGridColumn('nota_fiscal', 'Nota Fiscal', 'left');
-    $column_produto = new TDataGridColumn('produto->nome', 'Produto', 'left');
     $column_dt_saida = new TDataGridColumn('data_saida', 'Data de Saida', 'left');
     $column_clie = new TDataGridColumn('cliente->nome', 'Cliente', 'left');
-    $column_qtd = new TDataGridColumn('quantidade', 'Quant.', 'left');
     $column_total = new TDataGridColumn('valor_total', 'Total', 'left');
 
     $column_dt_saida->setTransformer(function ($value, $object, $row) {
@@ -102,18 +92,12 @@ class SaidaList extends TPage
     });
     //add coluna da datagrid
     $this->datagrid->addColumn($column_id);
-    $this->datagrid->addColumn($column_produto);
-    $this->datagrid->addColumn($column_nf);
     $this->datagrid->addColumn($column_dt_saida);
     $this->datagrid->addColumn($column_clie);
-    $this->datagrid->addColumn($column_qtd);
 
     //Criando ações para o datagrid
-    $column_produto->setAction(new TAction([$this, 'onReload']), ['order' => 'produto_id']);
-    $column_nf->setAction(new TAction([$this, 'onReload']), ['order' => 'nota_fiscal']);
     $column_dt_saida->setAction(new TAction([$this, 'onReload']), ['order' => 'data_saida']);
     $column_clie->setAction(new TAction([$this, 'onReload']), ['order' => 'cliente_id']);
-    $column_qtd->setAction(new TAction([$this, 'onReload']), ['order' => 'quantidade']);
     $column_total->setAction(new TAction([$this, 'onReload']), ['order' => 'valor_total']);
 
     $action1 = new TDataGridAction(['SaidaForm', 'onEdit'], ['id' => '{id}', 'register_state' => 'false']);

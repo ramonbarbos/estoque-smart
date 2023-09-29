@@ -13,15 +13,10 @@ class Saida extends TRecord
 
         // Adicione os atributos normais
         parent::addAttribute('tp_saida');
-        parent::addAttribute('estoque_id');
-        parent::addAttribute('produto_id');
         parent::addAttribute('data_saida');
-        parent::addAttribute('quantidade');
-        parent::addAttribute('quant_retirada');
         parent::addAttribute('cliente_id');
-        parent::addAttribute('nota_fiscal');
-        parent::addAttribute('preco_unit');
-        parent::addAttribute('valor_total');
+        parent::addAttribute('obs');
+        parent::addAttribute('valor_total');    
       
     }
 
