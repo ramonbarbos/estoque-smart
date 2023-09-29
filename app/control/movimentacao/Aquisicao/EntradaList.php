@@ -50,8 +50,8 @@ class EntradaList extends TPage
 
 
         $this->addFilterField('data_entrada', '=', 'data_entrada');
-        $this->addFilterField('produto_id', '=', 'produto_id');
         $this->addFilterField('fornecedor_id', '=', 'fornecedor_id');
+        $this->addFilterField('tp_entrada', '=', 'tp_entrada');
 
         //Criação do formulario 
         $this->form = new BootstrapFormBuilder('form_search_Entrada');
@@ -59,15 +59,15 @@ class EntradaList extends TPage
 
         //Criação de fields
         $data = new TDate('data_entrada');
-        $produto = new TDBUniqueSearch('produto_id', 'sample', 'Produto', 'id', 'nome');
-        $produto->setMinLength(0);
         $fornecedor = new TDBUniqueSearch('fornecedor_id', 'sample', 'Fornecedor', 'id', 'nome');
         $fornecedor->setMinLength(0);
+        $tp_entrada = new TDBUniqueSearch('tp_entrada', 'sample', 'Tipo_Entrada', 'id', 'nome');
+        $tp_entrada->setMinLength(0);
 
         //Add filds na tela
         $this->form->addFields([new TLabel('Data')], [$data]);
-        $this->form->addFields([new TLabel('Produto')], [$produto]);
         $this->form->addFields([new TLabel('Fornecedor')], [$fornecedor]);
+        $this->form->addFields([new TLabel('Tipo')], [$tp_entrada]);
 
         //Tamanho dos fields
         $data->setSize('50%');
@@ -94,9 +94,15 @@ class EntradaList extends TPage
         $column_dt_entrada->setTransformer(function ($value, $object, $row) {
             return date('d/m/Y', strtotime($value));
         });
-        // $column_preco->setTransformer(function ($value, $object, $row) {
-        //     return 'R$ ' . number_format($value, 2, ',', '.');
-        // });
+
+        $formato_valor = function ($value) {
+            if (is_numeric($value)) {
+                return 'R$ ' . number_format($value, 2, ',', '.');
+            }
+            return $value;
+        };
+        $column_valor->setTransformer($formato_valor);
+        
         $column_status->setTransformer(function ($value, $object, $row) {
             return ($value == 1) ? "<span style='color:green'>Ativo</span>" : "<span style='color:red'>Cancelado</span>";
         });
@@ -202,24 +208,24 @@ class EntradaList extends TPage
                 $produto_id = $item->produto_id;
                 $quantidade = $item->quantidade;
                 $totalValor = $item->total;
-    
+
                 $estoque = Estoque::where('produto_id', '=', $produto_id)->first();
-    
+
                 if ($estoque) {
                     // Verifique se a quantidade após a subtração será negativa
                     if ($estoque->quantidade - $quantidade < 0) {
                         throw new Exception("A quantidade no estoque do produto $produto_id não pode ser negativa.");
                     }
-    
+
                     // Verifique se o valor total após a subtração será negativo
                     if ($estoque->valor_total - $totalValor < 0) {
                         throw new Exception("O valor total no estoque do produto $produto_id não pode ser negativo.");
                     }
-    
+
                     // Subtraia a quantidade e o valor total do estoque do produto
                     $estoque->quantidade -= $quantidade;
                     $estoque->valor_total -= $totalValor;
-    
+
                     // Se a quantidade no estoque for zero, defina o preço unitário como zero para evitar divisão por zero
                     if ($estoque->quantidade == 0) {
                         $estoque->preco_unit = 0;
@@ -227,7 +233,7 @@ class EntradaList extends TPage
                         // Calcule o novo preço unitário com base no valor total e na quantidade restante
                         $estoque->preco_unit = $estoque->valor_total / $estoque->quantidade;
                     }
-    
+
                     $estoque->store();
                 }
             }
@@ -242,7 +248,6 @@ class EntradaList extends TPage
     {
         try {
             if (isset($param['key'])) {
-                // Obtém o ID do estoque a ser excluído
 
                 $id = $param['key'];
 
@@ -262,7 +267,7 @@ class EntradaList extends TPage
 
             TTransaction::close();
         } catch (Exception $e) {
-            new TMessage('error', $e->getMessage());
+            new TMessage('error', $e->getMessage(), $this->afterSaveAction);
             TTransaction::rollback();
         }
     }

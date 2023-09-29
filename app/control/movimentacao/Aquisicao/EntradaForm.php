@@ -81,7 +81,7 @@ class EntradaForm extends TPage
         $detail_id         = new THidden('detail_id');
         $produto_id = new TDBUniqueSearch('produto_id', 'sample', 'Produto', 'id', 'nome');
         $preco_unit      = new TEntry('preco_unit');
-        $quantidade     = new TEntry('quantidade');
+        $quantidade     = new TSpinner('quantidade');
 
 
         // Validação do campo 
@@ -103,7 +103,8 @@ class EntradaForm extends TPage
         $data->setDatabaseMask('yyyy-mm-dd');
         $nf->setNumericMask(2, '', '', true);
         $dt_nf->setSize('50%');
-
+        $quantidade->setRange(0,100,0.1);
+        $preco_unit->setNumericMask(2, '.', '', true);
         // fildes 
         $this->form->addFields([new TLabel('Codigo')], [$id], [new TLabel('Entrega (*)', '#FF0000')], [$data],);
         $this->form->addFields([new TLabel('Tipo (*)', '#FF0000')], [$tp_entrada], [new TLabel('Fornecedor(*)', '#FF0000')], [$fornecedor]);
@@ -303,7 +304,7 @@ class EntradaForm extends TPage
                 $this->form->getField('quantidade')->setEditable(false);
                 $this->form->getField('preco_unit')->setEditable(false);
 
-                if($object->status == 0){            
+                if ($object->status == 0) {
                     $alert = new TAlert('warning', 'Entrada foi cancelada.');
                     $alert->show();
                 }
@@ -327,57 +328,58 @@ class EntradaForm extends TPage
     {
         try {
             TTransaction::open('sample');
-    
+
             $data = $this->form->getData();
             $this->form->validate();
-    
+
             $entrada = new Entrada;
             $entrada->fromArray((array) $data);
-    
-            // Verifique se o campo ID já está definido
+
+            if ($this->hasNegativeValues($param['products_list_quantidade']) || $this->hasNegativeValues($param['products_list_preco_unit'])) {
+                throw new Exception('Não é permitido inserir valores negativos em quantidade ou preço unitário.');
+            }
             if (!empty($entrada->id)) {
-                // Se o ID já estiver definido, a entrada já foi salva antes
                 new TMessage('warning', 'Esta entrada já foi salva.', $this->afterSaveAction);
             } else {
-                // Se o ID não estiver definido, a entrada ainda não foi salva
                 $entrada->store();
 
                 Item_Entrada::where('entrada_id', '=', $entrada->id)->delete();
-    
+
                 $total = 0;
-                $quantidade = 0;
+           
                 if (!empty($param['products_list_produto_id'])) {
+                   
                     foreach ($param['products_list_produto_id'] as $key => $item_id) {
                         $item = new Item_Entrada;
                         $item->produto_id  = $item_id;
                         $item->preco_unit  = (float) $param['products_list_preco_unit'][$key];
                         $item->quantidade      = (float) $param['products_list_quantidade'][$key];
                         $item->total       =  $item->preco_unit * $item->quantidade;
-    
+
                         $item->entrada_id = $entrada->id;
                         $item->store();
                         $total += $item->total;
                         $this->insertEstoque($item, $item->total, $item->quantidade);
                     }
                 }
-               
+
                 $entrada->valor_total = $total;
                 $entrada->created_at = date('Y-m-d H:i:s');
                 $entrada->store();
-    
+
                 TForm::sendData('form_entrada', (object) ['id' => $entrada->id]);
                 new TMessage('info', 'Registos Salvos', $this->afterSaveAction);
             }
-    
-            TTransaction::close(); // close the transaction
-        } catch (Exception $e) // in case of exception
+
+            TTransaction::close(); 
+        } catch (Exception $e) 
         {
             new TMessage('error', $e->getMessage());
-            $this->form->setData($this->form->getData()); // keep form data
+            $this->form->setData($this->form->getData()); 
             TTransaction::rollback();
         }
     }
-    
+
     private function insertEstoque($item, $total, $quantidade)
     {
         try {
@@ -434,6 +436,16 @@ class EntradaForm extends TPage
         }
 
         TToast::show('info', 'Novo total: <b>' . 'R$ ' . number_format($total, 2, ',', '.') . '</b>', 'bottom right');
+    }
+    // Função para verificar se há valores negativos em um array
+    private function hasNegativeValues($array)
+    {
+        foreach ($array as $value) {
+            if ((float) $value < 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // Método fechar

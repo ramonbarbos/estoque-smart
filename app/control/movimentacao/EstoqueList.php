@@ -46,6 +46,16 @@ class EstoqueList extends TPage
         $column_preco = new DatagridTDataGridColumn('preco_unit', 'Valor unidade', 'left');
         $column_total = new DatagridTDataGridColumn('valor_total', 'Total', 'left');
 
+        $formato_valor = function ($value) {
+            if (is_numeric($value)) {
+                return 'R$ ' . number_format($value, 2, ',', '.');
+            }
+            return $value;
+        };
+        $column_preco->setTransformer($formato_valor);
+        $column_total->setTransformer($formato_valor);
+        
+
         $this->datagrid->addColumn($column_id);
         $this->datagrid->addColumn($column_produto);
         $this->datagrid->addColumn($column_produto_nome);
