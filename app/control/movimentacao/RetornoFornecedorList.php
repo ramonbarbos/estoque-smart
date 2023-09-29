@@ -178,31 +178,16 @@ class RetornoFornecedorList extends TPage
         $valor_atual = $estoque->valor_total + $retorno->valor_total;
         $estoque->valor_total = $valor_atual;
         $estoque->quantidade = $novaQuantidade;
+        $estoque->quant_retirada = $estoque->quant_retirada+ $retorno->quantidade;
 
         
         $estoque->store();
-
-
-
-        try {
+        $this->createDeleteMovement($retorno);
           
+        $retorno->delete();
 
-          $entrada = Entrada::where('id', '=', $retorno->entrada_id)
-            ->first();
-          $entrada->quant_retirada = $entrada->quant_retirada+ $retorno->quantidade;
-          $entrada->store();
-          $this->createDeleteMovement($retorno);
-          
-          $retorno->delete();
-          TTransaction::close();
 
-          // Recarregue a listagem
-          $this->onReload();
-          new TMessage('info', 'Registro cancelado com sucesso.');
-        } catch (Exception $e) {
-          new TMessage('error', $e->getMessage());
-        }
-
+      
 
         $this->onReload();
       }

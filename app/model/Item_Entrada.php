@@ -1,9 +1,9 @@
 <?php
 use Adianti\Database\TRecord;
 
-class Entrada extends TRecord
+class Item_Entrada extends TRecord
 {
-    const TABLENAME = 'entrada';
+    const TABLENAME = 'item_entrada';
     const PRIMARYKEY = 'id';
     const IDPOLICY = 'max';
 
@@ -12,14 +12,11 @@ class Entrada extends TRecord
         parent::__construct($id, $callObjectLoad);
 
         // Adicione os atributos normais
-        parent::addAttribute('tp_entrada');
-        parent::addAttribute('data_entrada');
-        parent::addAttribute('fornecedor_id');
-        parent::addAttribute('nota_fiscal');
-        parent::addAttribute('serie_notaFiscal');
-        parent::addAttribute('dt_notaFiscal');
-        parent::addAttribute('valor_total');
-        parent::addAttribute('status');
+        parent::addAttribute('entrada_id');
+        parent::addAttribute('produto_id');
+        parent::addAttribute('quantidade');
+        parent::addAttribute('preco_unit');
+        parent::addAttribute('total');
         parent::addAttribute('updated_at');
         parent::addAttribute('created_at');
 

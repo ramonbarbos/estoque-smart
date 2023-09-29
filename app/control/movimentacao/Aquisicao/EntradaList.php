@@ -84,50 +84,47 @@ class EntradaList extends TPage
         $this->datagrid->style = 'width: 100%';
 
         //Criando colunas da datagrid
-        $column_id = new TDataGridColumn('id', 'Cod', 'left', '10%');
-        $column_nf = new TDataGridColumn('nota_fiscal', 'Nota Fiscal', 'left');
-        $column_produto = new TDataGridColumn('produto->nome', 'Produto', 'left');
+        $column_id = new TDataGridColumn('id', 'Cod', 'left');
         $column_dt_entrada = new TDataGridColumn('data_entrada', 'Data', 'left');
         $column_fornc = new TDataGridColumn('fornecedor->nome', 'Fornecedor', 'left');
-        $column_qtd = new TDataGridColumn('quantidade', 'Quantidade', 'left');
+        $column_status = new TDataGridColumn('status', 'Status', 'left');
         $column_valor = new TDataGridColumn('valor_total', 'Total', 'left');
-        $column_preco = new TDataGridColumn('preco_unit', 'Unidade', 'left');
         $column_tipo = new TDataGridColumn('tipo->nome', 'Tipo', 'left');
 
         $column_dt_entrada->setTransformer(function ($value, $object, $row) {
             return date('d/m/Y', strtotime($value));
         });
-        $column_preco->setTransformer(function ($value, $object, $row) {
-            return 'R$ ' . number_format($value, 2, ',', '.');
+        // $column_preco->setTransformer(function ($value, $object, $row) {
+        //     return 'R$ ' . number_format($value, 2, ',', '.');
+        // });
+        $column_status->setTransformer(function ($value, $object, $row) {
+            return ($value == 1) ? "<span style='color:green'>Ativo</span>" : "<span style='color:red'>Cancelado</span>";
         });
 
         //add coluna da datagrid
         $this->datagrid->addColumn($column_id);
-        $this->datagrid->addColumn($column_produto);
         $this->datagrid->addColumn($column_tipo);
         $this->datagrid->addColumn($column_dt_entrada);
-        $this->datagrid->addColumn($column_nf);
         $this->datagrid->addColumn($column_fornc);
-        $this->datagrid->addColumn($column_qtd);
-        // $this->datagrid->addColumn($column_preco);
+        $this->datagrid->addColumn($column_fornc);
+        $this->datagrid->addColumn($column_status);
         $this->datagrid->addColumn($column_valor);
 
         //Criando ações para o datagrid
-        $column_produto->setAction(new TAction([$this, 'onReload']), ['order' => 'produto_id']);
-        $column_nf->setAction(new TAction([$this, 'onReload']), ['order' => 'nota_fiscal']);
         $column_dt_entrada->setAction(new TAction([$this, 'onReload']), ['order' => 'data_entrada']);
         $column_fornc->setAction(new TAction([$this, 'onReload']), ['order' => 'fornecedor_id']);
-        $column_qtd->setAction(new TAction([$this, 'onReload']), ['order' => 'quantidade']);
-        // $column_preco->setAction(new TAction([$this, 'onReload']), ['order' => 'preco_unit']);
         $column_valor->setAction(new TAction([$this, 'onReload']), ['order' => 'valor_total']);
         $column_tipo->setAction(new TAction([$this, 'onReload']), ['order' => 'tp_entrada']);
+        $column_status->setAction(new TAction([$this, 'onReload']), ['order' => 'status']);
 
         $action1 = new TDataGridAction(['EntradaForm', 'onEdit'], ['id' => '{id}', 'register_state' => 'false']);
         $action2 = new TDataGridAction([$this, 'onDelete'], ['id' => '{id}']);
+        $action3 = new TDataGridAction([$this, 'onCancel'], ['id' => '{id}']);
 
         //Adicionando a ação na tela
         $this->datagrid->addAction($action1, _t('Edit'), 'fa:edit blue');
         $this->datagrid->addAction($action2, _t('Delete'), 'fa:trash-alt red');
+        $this->datagrid->addAction($action3, _t('Cancel'), 'fa:solid fa-ban black');
 
 
         //Criar datagrid 
@@ -161,6 +158,86 @@ class EntradaList extends TPage
 
         parent::add($container);
     }
+    public function onCancel($param)
+    {
+        try {
+            if (isset($param['id'])) {
+                $id = $param['id'];
+
+                TTransaction::open('sample');
+
+                $entrada = new Entrada($id);
+
+                if ($entrada) {
+                    if ($entrada->status == 1) {
+                        $entrada->status = 0;
+
+                        $this->cancelEstoque($entrada);
+                        $entrada->store();
+
+                        TTransaction::close();
+
+                        new TMessage('info', 'Entrada Cancelada.', $this->afterSaveAction);
+                        $this->onReload([]);
+                    } else {
+                        throw new Exception("A entrada já está cancelada.");
+                    }
+                } else {
+                    throw new Exception("Entrada não encontrada.");
+                }
+            }
+        } catch (Exception $e) {
+            new TMessage('error', $e->getMessage());
+            TTransaction::rollback();
+        }
+    }
+    private function cancelEstoque($entrada)
+    {
+        try {
+            TTransaction::open('sample');
+
+            $itens = Item_Entrada::where('entrada_id', '=', $entrada->id)->load();
+
+            foreach ($itens as $item) {
+                $produto_id = $item->produto_id;
+                $quantidade = $item->quantidade;
+                $totalValor = $item->total;
+    
+                $estoque = Estoque::where('produto_id', '=', $produto_id)->first();
+    
+                if ($estoque) {
+                    // Verifique se a quantidade após a subtração será negativa
+                    if ($estoque->quantidade - $quantidade < 0) {
+                        throw new Exception("A quantidade no estoque do produto $produto_id não pode ser negativa.");
+                    }
+    
+                    // Verifique se o valor total após a subtração será negativo
+                    if ($estoque->valor_total - $totalValor < 0) {
+                        throw new Exception("O valor total no estoque do produto $produto_id não pode ser negativo.");
+                    }
+    
+                    // Subtraia a quantidade e o valor total do estoque do produto
+                    $estoque->quantidade -= $quantidade;
+                    $estoque->valor_total -= $totalValor;
+    
+                    // Se a quantidade no estoque for zero, defina o preço unitário como zero para evitar divisão por zero
+                    if ($estoque->quantidade == 0) {
+                        $estoque->preco_unit = 0;
+                    } else {
+                        // Calcule o novo preço unitário com base no valor total e na quantidade restante
+                        $estoque->preco_unit = $estoque->valor_total / $estoque->quantidade;
+                    }
+    
+                    $estoque->store();
+                }
+            }
+            TTransaction::close();
+        } catch (Exception $e) {
+            // Tratar erros aqui, se necessário
+            TTransaction::rollback();
+            throw new Exception("Erro ao atualizar o estoque: " . $e->getMessage());
+        }
+    }
     public function onDelete($param)
     {
         try {
@@ -171,28 +248,16 @@ class EntradaList extends TPage
 
                 TTransaction::open('sample');
                 $entrada = new Entrada($id);
-                $estoque = Estoque::where('produto_id', '=', $entrada->produto_id)
-                    ->first();
 
-                if ($estoque) {
-
-                    $estoque_id = $estoque->id;
-                    // Verifica se existem saídas relacionadas a este estoque
-                    if ($this->hasRelatedOutbound($estoque_id)) {
-                        new TMessage('error', 'Não é possível excluir esta entrada, pois existem vinculações.');
-                    } else {
-                    
-                            $entrada = new Entrada($id);
-                            $this->createDeleteMovement($entrada);
-                            $this->retiraSaldo($entrada);
-                            $entrada->delete();
-
-                            // Recarregue a listagem
-                            $this->onReload();
-                            new TMessage('info', 'Registro excluído com sucesso.', $this->afterSaveAction);
-                      
+                if ($entrada->status == 0) {
+                    if ($entrada) {
+                        Item_Entrada::where('entrada_id', '=', $entrada->id)->delete();
+                        $entrada->delete();
+                        new TMessage('info', 'Entrada deletada.', $this->afterSaveAction);
                     }
-                } 
+                } else {
+                    new TMessage('warning', 'É necessario a entrada está cancelada.', $this->afterSaveAction);
+                }
             }
 
             TTransaction::close();
@@ -216,26 +281,13 @@ class EntradaList extends TPage
         $mov->descricao = $descricao;
         $mov->produto_id = $entrada->produto_id;
         $mov->responsavel_id = $usuario_logado;
-        $mov->saldoEstoque = $estoque->valor_total ?? 0; 
-        $mov->quantidade = $entrada->quantidade ?? 0; 
-        $mov->valor_total = $entrada->valor_total ?? 0; 
+        $mov->saldoEstoque = $estoque->valor_total ?? 0;
+        $mov->quantidade = $entrada->quantidade ?? 0;
+        $mov->valor_total = $entrada->valor_total ?? 0;
 
-        $mov->store(); 
+        $mov->store();
     }
-    private function retiraSaldo($entrada)
-    {
-        TTransaction::open('sample');
 
-          // Verifique se já existe uma entrada no mapa de estoque para esse produto
-          $estoque = Estoque::where('produto_id', '=', $entrada->produto_id)->first();
-          $novaQuantidade = $estoque->quantidade - $entrada->quantidade;
-          $valor_atual = $estoque->valor_total - $entrada->valor_total;
-          $estoque->valor_total = $valor_atual;
-          $estoque->quantidade = $novaQuantidade;
-          $estoque->store();
-          TTransaction::close();
-
-    }
 
     private function hasRelatedOutbound($id)
     {

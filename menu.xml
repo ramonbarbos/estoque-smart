@@ -20,9 +20,9 @@
         <action>EstoqueList</action>
         <icon>fa fa fa-fw fa-fw</icon>
       </menuitem>
-      <menuitem label="Entrada">
+      <menuitem label="Aquisição">
         <action>EntradaList</action>
-        <icon>fa fa fa-fw fa-fw</icon>
+        <icon>fas:cart-arrow-down fa-fw fa-fw</icon>
       </menuitem>
       <menuitem label="Saida">
         <action>SaidaList</action>

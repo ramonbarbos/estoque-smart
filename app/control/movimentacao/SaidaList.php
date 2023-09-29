@@ -183,16 +183,8 @@ class SaidaList extends TPage
               // Exclua o estoque
               $saida = new Saida($id);
               $this->createDeleteMovement($saida);
-
-              // Verifique se já existe uma entrada no mapa de estoque para esse produto
-              $estoque = Estoque::where('id', '=', $retornoSaida->estoque_id)->load();
-              $estoque = $estoque[0];
-              $novaQuantidade = $estoque->quantidade + $retornoSaida->quantidade;
-              $valor_atual = $estoque->valor_total + $retornoSaida->valor_total;
-              $estoque->valor_total = $valor_atual;
-              $estoque->quantidade = $novaQuantidade;
-              $estoque->store();
-
+              $this->devolverSaldo($saida);
+          
              
               $saida->delete();
 
@@ -210,14 +202,9 @@ class SaidaList extends TPage
           // Exclua o estoque
           $saida = new Saida($id);
           $this->createDeleteMovement($saida);
-          // Verifique se já existe uma entrada no mapa de estoque para esse produto
-          $estoque = Estoque::where('id', '=', $retornoSaida->estoque_id)->load();
-          $estoque = $estoque[0];
-          $novaQuantidade = $estoque->quantidade + $retornoSaida->quantidade;
-          $valor_atual = $estoque->valor_total + $retornoSaida->valor_total;
-          $estoque->valor_total = $valor_atual;
-          $estoque->quantidade = $novaQuantidade;
-          $estoque->store();
+          $this->devolverSaldo($saida);
+          
+             
 
           
           $saida->delete();
@@ -261,6 +248,22 @@ class SaidaList extends TPage
         new TMessage('error', $e->getMessage());
         TTransaction::rollback();
     }
+
+    }
+
+    private function devolverSaldo($saida)
+    {
+        TTransaction::open('sample');
+
+          // Verifique se já existe uma entrada no mapa de estoque para esse produto
+          $estoque = Estoque::where('produto_id', '=', $saida->produto_id)->first();
+          $novaQuantidade = $estoque->quantidade + $saida->quantidade;
+          $valor_atual = $estoque->valor_total + $saida->valor_total;
+          $estoque->valor_total = $valor_atual;
+          $estoque->quantidade = $novaQuantidade;
+          $estoque->saida_id = null;
+          $estoque->store();
+          TTransaction::close();
 
     }
   public function onCancel($param)
