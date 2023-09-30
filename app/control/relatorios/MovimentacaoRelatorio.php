@@ -119,7 +119,7 @@ class MovimentacaoRelatorio extends TPage
                         $table->addCell('Produto', 'center', 'title',1);
                         $table->addCell('Quant.', 'center', 'title',1);
                         $table->addCell('Preço', 'center', 'title',1);
-                        $table->addCell('Estoque', 'center', 'title',1);
+                        $table->addCell('Estoque Atual', 'center', 'title',1);
                         $table->addCell('Responsável', 'center', 'title',1);
                     });
 

@@ -102,7 +102,7 @@ class EntradaList extends TPage
             return $value;
         };
         $column_valor->setTransformer($formato_valor);
-        
+
         $column_status->setTransformer(function ($value, $object, $row) {
             return ($value == 1) ? "<span style='color:green'>Ativo</span>" : "<span style='color:red'>Cancelado</span>";
         });
@@ -111,7 +111,6 @@ class EntradaList extends TPage
         $this->datagrid->addColumn($column_id);
         $this->datagrid->addColumn($column_tipo);
         $this->datagrid->addColumn($column_dt_entrada);
-        $this->datagrid->addColumn($column_fornc);
         $this->datagrid->addColumn($column_fornc);
         $this->datagrid->addColumn($column_status);
         $this->datagrid->addColumn($column_valor);
@@ -173,8 +172,15 @@ class EntradaList extends TPage
                 TTransaction::open('sample');
 
                 $entrada = new Entrada($id);
-
                 if ($entrada) {
+
+                    $itemEntrada = Item_Entrada::where('entrada_id', '=', $entrada->id)->first();
+                    @$saida = Item_Saida::where('produto_id', '=', $itemEntrada->produto_id)->first();
+
+                    if ($saida) {
+                        throw new Exception("Não foi possivel cancelar, verifique saidas.", $this->afterSaveAction);
+                    }
+
                     if ($entrada->status == 1) {
                         $entrada->status = 0;
 
@@ -212,29 +218,24 @@ class EntradaList extends TPage
                 $estoque = Estoque::where('produto_id', '=', $produto_id)->first();
 
                 if ($estoque) {
-                    // Verifique se a quantidade após a subtração será negativa
                     if ($estoque->quantidade - $quantidade < 0) {
                         throw new Exception("A quantidade no estoque do produto $produto_id não pode ser negativa.");
                     }
 
-                    // Verifique se o valor total após a subtração será negativo
                     if ($estoque->valor_total - $totalValor < 0) {
                         throw new Exception("O valor total no estoque do produto $produto_id não pode ser negativo.");
                     }
 
-                    // Subtraia a quantidade e o valor total do estoque do produto
                     $estoque->quantidade -= $quantidade;
                     $estoque->valor_total -= $totalValor;
 
-                    // Se a quantidade no estoque for zero, defina o preço unitário como zero para evitar divisão por zero
                     if ($estoque->quantidade == 0) {
                         $estoque->preco_unit = 0;
                     } else {
-                        // Calcule o novo preço unitário com base no valor total e na quantidade restante
                         $estoque->preco_unit = $estoque->valor_total / $estoque->quantidade;
                     }
-
                     $estoque->store();
+                    $this->cancelMovement($item);
                 }
             }
             TTransaction::close();
@@ -255,11 +256,18 @@ class EntradaList extends TPage
                 $entrada = new Entrada($id);
 
                 if ($entrada->status == 0) {
+
+
+
                     if ($entrada) {
+                        $this->deleteMovement($entrada);
                         Item_Entrada::where('entrada_id', '=', $entrada->id)->delete();
                         $entrada->delete();
+
                         new TMessage('info', 'Entrada deletada.', $this->afterSaveAction);
                     }
+
+                    $this->onReload([]);
                 } else {
                     new TMessage('warning', 'É necessario a entrada está cancelada.', $this->afterSaveAction);
                 }
@@ -272,27 +280,55 @@ class EntradaList extends TPage
         }
     }
 
-    private function createDeleteMovement($entrada)
+    private function deleteMovement($entrada)
     {
         //GRAVANDO MOVIMENTAÇÃO
         $mov = new Movimentacoes();
         $usuario_logado = TSession::getValue('userid');
-        $descricao = 'Exclusão de Entrada';
+        $descricao = 'Entrada Deletada';
 
-
-        $estoque = Estoque::where('produto_id', '=', $entrada->produto_id)->first();
+        $item = Item_Entrada::where('entrada_id', '=', $entrada->id)->first();
+        @$estoque = Estoque::where('produto_id', '=', $item->produto_id)->first();
 
         $mov->data_hora = date('Y-m-d H:i:s');
         $mov->descricao = $descricao;
-        $mov->produto_id = $entrada->produto_id;
+        @$mov->produto_id = $estoque->produto_id;
         $mov->responsavel_id = $usuario_logado;
-        $mov->saldoEstoque = $estoque->valor_total ?? 0;
-        $mov->quantidade = $entrada->quantidade ?? 0;
-        $mov->valor_total = $entrada->valor_total ?? 0;
+        $mov->saldo_anterior = $estoque->valor_total ?? 0;
+        $mov->quantidade = $item->quantidade ?? 0;
+        $mov->valor_total = $item->valor_total ?? 0;
 
         $mov->store();
     }
 
+    private function cancelMovement($info)
+    {
+        try {
+            TTransaction::open('sample');
+            //GRAVANDO MOVIMENTAÇÃO
+            $mov = new Movimentacoes();
+            $entrada = new Entrada($info->entrada_id);
+            $estoque = Estoque::where('produto_id', '=', $entrada->produto_id)->first();
+
+            $usuario_logado = TSession::getValue('userid');
+            $desc =  'Entrada Cancelada.';
+            $mov->data_hora = date('Y-m-d H:i:s');
+            $mov->descricao = $desc;
+            $mov->preco_unit = $info->preco_unit;
+            $mov->produto_id = $info->produto_id;
+            $mov->responsavel_id = $usuario_logado;
+            $mov->saldo_anterior = $estoque->valor_total ?? 0;
+            $mov->quantidade = $info->quantidade ?? 0;
+            $mov->valor_total = $info->valor_total ?? 0;
+
+
+            $mov->store();
+            TTransaction::close();
+        } catch (Exception $e) {
+            new TMessage('error', $e->getMessage());
+            TTransaction::rollback();
+        }
+    }
 
     private function hasRelatedOutbound($id)
     {

@@ -47,6 +47,7 @@ class SaidaList extends TPage
     $this->setLimit(10);
 
     $this->addFilterField('data_saida', '=', 'data_saida');
+    $this->addFilterField('cliente_id', '=', 'cliente_id');
 
 
     //Criação do formulario 
@@ -55,15 +56,16 @@ class SaidaList extends TPage
 
     //Criação de fields
     $data = new TDate('data_saida');
-    $fornecedor = new TDBUniqueSearch('fornecedor_id', 'sample', 'Fornecedor', 'id', 'nome');
-    $fornecedor->setMinLength(0);
+    $cliente = new TDBUniqueSearch('cliente_id', 'sample', 'Cliente', 'id', 'nome');
+    $cliente->setMinLength(0);
 
     //Add filds na tela
     $this->form->addFields([new TLabel('Data')], [$data]);
+    $this->form->addFields([new TLabel('Cliente')], [$cliente]);
 
     //Tamanho dos fields
     $data->setSize('50%');
-    $fornecedor->setSize('100%');
+    $cliente->setSize('100%');
 
     $this->form->setData(TSession::getValue(__CLASS__ . '_filter_data'));
 
@@ -80,6 +82,7 @@ class SaidaList extends TPage
     $column_id = new TDataGridColumn('id', 'Codigo', 'left');
     $column_dt_saida = new TDataGridColumn('data_saida', 'Data de Saida', 'left');
     $column_clie = new TDataGridColumn('cliente->nome', 'Cliente', 'left');
+    $column_status = new TDataGridColumn('status', 'Status', 'left');
     $column_total = new TDataGridColumn('valor_total', 'Total', 'left');
 
     $column_dt_saida->setTransformer(function ($value, $object, $row) {
@@ -87,13 +90,23 @@ class SaidaList extends TPage
       return date('d/m/Y', strtotime($value));
     });
 
-    $column_total->setTransformer(function ($value, $object, $row) {
-      return 'R$ ' . number_format($value, 2, ',', '.');
+    $formato_valor = function ($value) {
+      if (is_numeric($value)) {
+        return 'R$ ' . number_format($value, 2, ',', '.');
+      }
+      return $value;
+    };
+    $column_total->setTransformer($formato_valor);
+
+    $column_status->setTransformer(function ($value, $object, $row) {
+      return ($value == 1) ? "<span style='color:green'>Baixado</span>" : "<span style='color:red'>Cancelado</span>";
     });
     //add coluna da datagrid
     $this->datagrid->addColumn($column_id);
     $this->datagrid->addColumn($column_dt_saida);
+    $this->datagrid->addColumn($column_status);
     $this->datagrid->addColumn($column_clie);
+    $this->datagrid->addColumn($column_total);
 
     //Criando ações para o datagrid
     $column_dt_saida->setAction(new TAction([$this, 'onReload']), ['order' => 'data_saida']);
@@ -102,10 +115,12 @@ class SaidaList extends TPage
 
     $action1 = new TDataGridAction(['SaidaForm', 'onEdit'], ['id' => '{id}', 'register_state' => 'false']);
     $action2 = new TDataGridAction([$this, 'onDelete'], ['id' => '{id}']);
+    $action3 = new TDataGridAction([$this, 'onCancel'], ['id' => '{id}']);
 
     //Adicionando a ação na tela
     $this->datagrid->addAction($action1, _t('Edit'), 'fa:edit blue');
-    $this->datagrid->addAction($action2, 'Excluir/Cancelar', 'fa:trash-alt red');
+    $this->datagrid->addAction($action2, 'Excluir', 'fa:trash-alt red');
+    $this->datagrid->addAction($action3, _t('Cancel'), 'fa:solid fa-ban black');
 
 
     //Criar datagrid 
@@ -139,7 +154,84 @@ class SaidaList extends TPage
 
     parent::add($container);
   }
+  public function onCancel($param)
+  {
+    try {
+      if (isset($param['id'])) {
+        $id = $param['id'];
 
+        TTransaction::open('sample');
+
+        $saida = new Saida($id);
+
+        if ($saida) {
+          if ($saida->status == 1) {
+            $saida->status = 0;
+
+            $this->cancelEstoque($saida);
+            $saida->store();
+
+            TTransaction::close();
+
+            new TMessage('info', 'Saida Cancelada.', $this->afterSaveAction);
+            $this->onReload([]);
+          } else {
+            throw new Exception("A saida já está cancelada.");
+          }
+        } else {
+          throw new Exception("Saida não encontrada.");
+        }
+      }
+    } catch (Exception $e) {
+      new TMessage('error', $e->getMessage());
+      TTransaction::rollback();
+    }
+  }
+  private function cancelEstoque($saida)
+  {
+    try {
+      TTransaction::open('sample');
+
+      $itens = Item_Saida::where('saida_id', '=', $saida->id)->load();
+
+      foreach ($itens as $item) {
+        $produto_id = $item->produto_id;
+        $quantidade = $item->quantidade;
+        $totalValor = $item->total;
+
+        $estoque = Estoque::where('produto_id', '=', $produto_id)->first();
+
+        if ($estoque) {
+          if ($estoque->quantidade + $quantidade < 0) {
+            throw new Exception("A quantidade no estoque do produto $produto_id não pode ser negativa.");
+          }
+
+          if ($estoque->valor_total + $totalValor < 0) {
+            throw new Exception("O valor total no estoque do produto $produto_id não pode ser negativo.");
+          }
+
+          $estoque->quantidade += $quantidade;
+          $estoque->valor_total += $totalValor;
+
+          if ($estoque->quantidade == 0) {
+            $estoque->preco_unit = 0;
+          } else {
+            // Calcule o novo preço unitário com base no valor total e na quantidade restante
+            $estoque->preco_unit = $estoque->valor_total / $estoque->quantidade;
+          }
+
+          $estoque->store();
+          $this->cancelMovement($item);
+
+        }
+      }
+      TTransaction::close();
+    } catch (Exception $e) {
+      // Tratar erros aqui, se necessário
+      TTransaction::rollback();
+      throw new Exception("Erro ao atualizar o estoque: " . $e->getMessage());
+    }
+  }
   public function onDelete($param)
   {
     if (isset($param['key'])) {
@@ -147,141 +239,67 @@ class SaidaList extends TPage
       $id = $param['key']; //ID da saida
       TTransaction::open('sample');
 
-      $retornoSaida = new Saida($id);
-      if ($retornoSaida) {
+      $saida = new Saida($id);
 
-
-
-
-        $retorno = Retorno_Cliente::where('saida_id', '=', $id)
-          ->first();
-        if ($retorno) {
-          $retorno_id =  $retorno->id;
-
-          // Verifica se existem saídas relacionadas a este estoque
-          if ($this->hasRelatedOutbound($retorno_id)) {
-            new TMessage('error', 'Não é possível excluir esta saida, pois existem vinculações.', $this->afterSaveAction);
-          } else {
-            try {
-
-              // Exclua o estoque
-              $saida = new Saida($id);
-              $this->createDeleteMovement($saida);
-              $this->devolverSaldo($saida);
-          
-             
-              $saida->delete();
-
-
-              // Recarregue a listagem
-              $this->onReload();
-              new TMessage('info', 'Registro excluído com sucesso.', $this->afterSaveAction);
-            } catch (Exception $e) {
-              new TMessage('error', $e->getMessage());
-            }
-          }
-        } else {
-          TTransaction::open('sample');
-
-          // Exclua o estoque
-          $saida = new Saida($id);
-          $this->createDeleteMovement($saida);
-          $this->devolverSaldo($saida);
-          
-             
-
-          
+      if ($saida->status == 0) {
+        if ($saida) {
+          $this->deleteMovement($saida);
+          Item_Saida::where('saida_id', '=', $saida->id)->delete();
           $saida->delete();
-
-          new TMessage('info', 'Registro excluído com sucesso.', $this->afterSaveAction);
-
-          // Recarregue a listagem
-          $this->onReload();
+          new TMessage('info', 'Saida deletada.', $this->afterSaveAction);
+          $this->onReload([]);
         }
-        TTransaction::close();
-
-
-        $this->onReload();
+      } else {
+        new TMessage('warning', 'É necessario a saida está cancelada.', $this->afterSaveAction);
       }
     }
   }
-
-  private function createDeleteMovement($saida)
-    {
-      try{
-        TTransaction::open('sample');
-
-        //GRAVANDO MOVIMENTAÇÃO
-        $mov = new Movimentacoes();
-        $usuario_logado = TSession::getValue('userid');
-        $descricao = 'Exclusão de Saida ' . $saida->produto_nome . ' - ' . $saida->quantidade . ' unidades - NF:' . $saida->nota_fiscal;
-
-        $estoque = Estoque::where('produto_id', '=', $saida->produto_id)->first();
-
-        $mov->data_hora = date('Y-m-d H:i:s');
-        $mov->descricao = $descricao;
-        $mov->produto_id = $saida->produto_id;
-        $mov->responsavel_id = $usuario_logado;
-        $mov->saldoEstoque = $estoque->valor_total ?? 0; 
-        $mov->quantidade = $saida->quantidade ?? 0; 
-        $mov->valor_total = $saida->valor_total ?? 0; 
-
-        $mov->store(); 
-        TTransaction::close();
-      } catch (Exception $e) {
-        new TMessage('error', $e->getMessage());
-        TTransaction::rollback();
-    }
-
-    }
-
-    private function devolverSaldo($saida)
-    {
-        TTransaction::open('sample');
-
-          // Verifique se já existe uma entrada no mapa de estoque para esse produto
-          $estoque = Estoque::where('produto_id', '=', $saida->produto_id)->first();
-          $novaQuantidade = $estoque->quantidade + $saida->quantidade;
-          $valor_atual = $estoque->valor_total + $saida->valor_total;
-          $estoque->valor_total = $valor_atual;
-          $estoque->quantidade = $novaQuantidade;
-          $estoque->saida_id = null;
-          $estoque->store();
-          TTransaction::close();
-
-    }
-  public function onCancel($param)
+  private function deleteMovement($saida)
   {
-    if (isset($param['key'])) {
-      // Obtém o ID do estoque a ser excluído
+    //GRAVANDO MOVIMENTAÇÃO
+    $mov = new Movimentacoes();
+    $usuario_logado = TSession::getValue('userid');
+    $descricao = 'Saida Deletada';
 
+    $item = Item_Saida::where('saida_id', '=', $saida->id)->first();
+    @$estoque = Estoque::where('produto_id', '=', $item->produto_id)->first();
 
-      $id = $param['key'];
+    $mov->data_hora = date('Y-m-d H:i:s');
+    $mov->descricao = $descricao;
+    @$mov->produto_id = $estoque->produto_id;
+    $mov->responsavel_id = $usuario_logado;
+    $mov->saldo_anterior = $estoque->valor_total ?? 0;
+    $mov->quantidade = $item->quantidade ?? 0;
+    $mov->valor_total = $item->valor_total ?? 0;
 
-      // Abre uma transação
-      TTransaction::open('sample');
-
-
-      TTransaction::close();
-    }
+    $mov->store();
   }
-  private function hasRelatedOutbound($id)
+  private function cancelMovement($info)
   {
     try {
-      // Verifique se há saídas relacionadas a este estoque
       TTransaction::open('sample');
-      $criteria = new TCriteria;
-      $criteria->add(new TFilter('id', '=', $id));
-      $repository = new TRepository('Retorno_Cliente');
-      $count = $repository->count($criteria);
-      TTransaction::close();
+      //GRAVANDO MOVIMENTAÇÃO
+      $mov = new Movimentacoes();
+      $saida = new Saida($info->saida_id);
+      $estoque = Estoque::where('produto_id', '=', $saida->produto_id)->first();
 
-      // Se houver saídas relacionadas, retorne true
-      return $count > 0;
+      $usuario_logado = TSession::getValue('userid');
+      $desc =  'Saida Cancelada.';
+      $mov->data_hora = date('Y-m-d H:i:s');
+      $mov->descricao = $desc;
+      $mov->preco_unit = $info->preco_unit;
+      $mov->produto_id = $info->produto_id;
+      $mov->responsavel_id = $usuario_logado;
+      $mov->saldo_anterior = $estoque->valor_total ?? 0;
+      $mov->quantidade = $info->quantidade ?? 0;
+      $mov->valor_total = $info->valor_total ?? 0;
+
+
+      $mov->store();
+      TTransaction::close();
     } catch (Exception $e) {
-      // Em caso de erro, trate-o de acordo com suas necessidades
       new TMessage('error', $e->getMessage());
-      return false;
+      TTransaction::rollback();
     }
   }
 }

@@ -82,12 +82,11 @@ class SaidaForm extends TPage
         $uniqid      = new THidden('uniqid');
         $detail_id         = new THidden('detail_id');
 
-        $productList = $this->getProductList();
-        $produto_id = new TDBUniqueSearch('produto_id', 'sample', 'Estoque', 'id', 'produto_id');
+        $criteria_prod = new TCriteria();
+        $criteria_prod->add(new TFilter('quantidade', '>', 0));
+        $produto_id = new TDBUniqueSearch('produto_id', 'sample', 'Estoque', 'id', 'produto_id', null, $criteria_prod);
         $produto_id->setChangeAction(new TAction([$this, 'onProductChange']));
-        $produto_id->setMask('{produto->nome} ({quantidade} disponíveis)'); // Opcional, para exibir a quantidade disponível
-        $produto_id->addItems($productList); // Define as opções disponíveis com base na lista obtida
-
+        $produto_id->setMask('{produto->nome} ({quantidade} disponíveis)');
         $preco_unit      = new TEntry('preco_unit');
         $quantidade     = new TSpinner('quantidade');
 
@@ -216,36 +215,6 @@ class SaidaForm extends TPage
 
         parent::add($container);
     }
-    // Método para obter a lista de produtos com quantidade positiva
-private function getProductList()
-{
-    try {
-        TTransaction::open('sample');
-
-        // Consulte o banco de dados para obter a lista de produtos com quantidade positiva
-        $repository = new TRepository('Estoque');
-        $criteria = new TCriteria;
-        $criteria->setProperty('order', 'id');
-        $criteria->add(new TFilter('quantidade', '<', 0)); 
-        $products = $repository->load($criteria);
-
-        $productList = [];
-
-        if ($products) {
-            foreach ($products as $product) {
-                $productList[$product->id] = $product->id;
-            }
-        }
-
-        TTransaction::close();
-
-        return $productList;
-    } catch (Exception $e) {
-        new TMessage('error', $e->getMessage());
-        TTransaction::rollback();
-        return [];
-    }
-}
 
     public static function onProductChange($params)
     {
@@ -409,7 +378,7 @@ private function getProductList()
                         $item->store();
                         $total += $item->total;
                         $this->removeEstoque($item, $item->total, $item->quantidade);
-                        //$this->createMovement($item);
+                        $this->createMovement($item);
                     }
                 }
 
@@ -439,9 +408,9 @@ private function getProductList()
 
             // Atualizar ou inserir o registro de estoque
             if ($estoque) {
-                    $estoque->quantidade -= $quantidade;
-                    $estoque->valor_total -= $total ;
-            } 
+                $estoque->quantidade -= $quantidade;
+                $estoque->valor_total -= $total;
+            }
 
             $estoque->store();
             TTransaction::close();
