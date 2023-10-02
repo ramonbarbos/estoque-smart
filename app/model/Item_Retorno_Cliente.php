@@ -14,7 +14,7 @@ class Item_Retorno_Cliente extends TRecord
         // Adicione os atributos normais
         parent::addAttribute('retorno_id');
         parent::addAttribute('produto_id');
-        parent::addAttribute('quantidade_baixa');    
+        parent::addAttribute('quantidade');    
         parent::addAttribute('quantidade_retorno');    
         parent::addAttribute('preco_unit');    
         parent::addAttribute('total');    

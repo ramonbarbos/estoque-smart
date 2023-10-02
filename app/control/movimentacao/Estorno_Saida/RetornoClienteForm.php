@@ -93,10 +93,10 @@ class RetornoClienteForm extends TPage
         $criteria_prod->add(new TFilter('quantidade', '>', 0));
         $produto_id = new TEntry('produto_id');
         // $produto_id->setChangeAction(new TAction([$this, 'onProductChange']));
-      //  $produto_id->setMask('{produto->nome}');
+        //  $produto_id->setMask('{produto->nome}');
         $preco_unit      = new TEntry('preco_unit');
-        $quantidade     = new TSpinner('quantidade');
-       // $quantidade_retorno     = new THidden('quantidade_retorno');
+        $quantidade     = new THidden('quantidade');
+        $quantidade_retorno     = new TSpinner('quantidade_retorno');
 
 
         // Validação do campo 
@@ -127,7 +127,7 @@ class RetornoClienteForm extends TPage
         $data->setEditable(false);
         $dt_retorno->setMask('dd/mm/yyyy');
         $dt_retorno->setDatabaseMask('yyyy-mm-dd');
-        $quantidade->setRange(0, 100, 0.1);
+        $quantidade_retorno->setRange(0, 100, 0.1);
         $preco_unit->setNumericMask(2, '.', '', true);
         $preco_unit->setEditable(false);
 
@@ -146,8 +146,8 @@ class RetornoClienteForm extends TPage
         $subform->setProperty('style', 'border:none');
 
         $subform->appendPage('Produtos');
-        $subform->addFields([$uniqid], [$detail_id] );
-        $subform->addFields([new TLabel('Produto (*)', '#FF0000')], [$produto_id], [new TLabel('Quant. (*)', '#FF0000')], [$quantidade],);
+        $subform->addFields([$uniqid], [$detail_id], [$quantidade]);
+        $subform->addFields([new TLabel('Produto (*)', '#FF0000')], [$produto_id], [new TLabel('Quant. (*)', '#FF0000')], [$quantidade_retorno],);
         $subform->addFields([new TLabel('Preço (*)', '#FF0000')], [$preco_unit]);
         $add_product = TButton::create('add_product', [$this, 'onProductAdd'], 'Register', 'fa:plus-circle green');
         $add_product->getAction()->setParameter('static', '1');
@@ -169,8 +169,9 @@ class RetornoClienteForm extends TPage
         $col_pid    = new TDataGridColumn('produto_id', 'Cod', 'center', '10%');
         $col_descr  = new TDataGridColumn('produto_id', 'Produto', 'left', '30%');
         $col_quantidade = new TDataGridColumn('quantidade', 'Quantidade', 'left', '10%');
+        $col_quantidade_retorno = new TDataGridColumn('quantidade_retorno', 'Quant. Retorno', 'left', '10%');
         $col_price  = new TDataGridColumn('preco_unit', 'Preço', 'right', '15%');
-        $col_subt   = new TDataGridColumn('={quantidade} * {preco_unit} ', 'Subtotal', 'right', '20%');
+        $col_subt   = new TDataGridColumn('={quantidade_retorno} * {preco_unit} ', 'Subtotal', 'right', '20%');
 
 
         $this->product_list->addColumn($col_uniq);
@@ -178,6 +179,7 @@ class RetornoClienteForm extends TPage
         $this->product_list->addColumn($col_pid);
         $this->product_list->addColumn($col_descr);
         $this->product_list->addColumn($col_quantidade);
+        $this->product_list->addColumn($col_quantidade_retorno);
         $this->product_list->addColumn($col_price);
         $this->product_list->addColumn($col_subt);
 
@@ -303,6 +305,7 @@ class RetornoClienteForm extends TPage
                 'id'          => $data->detail_id,
                 'produto_id'  => $data->produto_id,
                 'quantidade'      => $data->quantidade,
+                'quantidade_retorno'      => $data->quantidade_retorno,
                 'preco_unit'  => $data->preco_unit,
 
             ];
@@ -319,6 +322,7 @@ class RetornoClienteForm extends TPage
             $data->produto_id = '';
             $data->product_detail_name       = '';
             $data->quantidade     = '';
+            $data->quantidade_retorno     = '0';
             $data->preco_unit      = '';
             // $data->product_detail_discount   = '';
 
@@ -336,6 +340,7 @@ class RetornoClienteForm extends TPage
         $data->detail_id         = $param['id'];
         $data->produto_id = $param['produto_id'];
         $data->quantidade     = $param['quantidade'];
+        $data->quantidade_retorno     = 0;
         $data->preco_unit      = $param['preco_unit'];
         //$data->product_detail_discount   = $param['discount'];
 
@@ -400,84 +405,101 @@ class RetornoClienteForm extends TPage
         }
     }
     public function onSave($param)
-{
-    try {
+    {
+        try {
+            TTransaction::open('sample');
+
+            $data = $this->form->getData();
+            $this->form->validate();
+
+            $retorno = new Retorno_Cliente();
+            $retorno->fromArray((array) $data);
+
+            if ($this->hasNegativeValues($param['products_list_quantidade_retorno']) || $this->hasNegativeValues($param['products_list_preco_unit'])) {
+                throw new Exception('Não é permitido inserir valores negativos em quantidade ou preço unitário.');
+            }
+
+
+            $itensSaida = Item_Saida::where('saida_id', '=', $retorno->saida_id)->load();
+            $quantidadeTotalSaida = 0;
+
+            foreach ($itensSaida as $itemSaida) {
+                $quantidadeTotalSaida += $itemSaida->quantidade;
+            }
+
+            if (!empty($retorno->id)) {
+                new TMessage('warning', 'Este Estorno já foi salvo.');
+            } else {
+                $retorno->store();
+
+                Item_Retorno_Cliente::where('retorno_id', '=', $retorno->id)->delete();
+
+
+                $total = 0;
+
+                if (!empty($param['products_list_produto_id'])) {
+                    foreach ($param['products_list_produto_id'] as $key => $item_id) {
+                        $item = new Item_Retorno_Cliente;
+                        $item->produto_id  = $item_id;
+                        $item->preco_unit  = (float) $param['products_list_preco_unit'][$key];
+                        $item->quantidade_retorno  = (float) $param['products_list_quantidade_retorno'][$key];
+                        $item->quantidade  = (float) $param['products_list_quantidade'][$key];
+                        $item->total       =  $item->preco_unit * $item->quantidade_retorno;
+                        $item->retorno_id  = $retorno->id;
+
+                        if ($item->quantidade_retorno > $quantidadeTotalSaida) {
+                            $delete = new Retorno_Cliente($retorno->id);
+                            $delete->delete();
+                            throw new Exception('Não é permitido inserir valores maior que a quantidade baixada.');
+                        }
+
+                        $item->store();
+                        $total += $item->total;
+                        $this->insertEstoque($item, $item->total, $item->quantidade_retorno);
+                    }
+                }
+                $this->statusBaixa($retorno);
+
+
+                $retorno->valor_total = $total;
+                $retorno->store();
+
+                TForm::sendData('form_retorno', (object) ['id' => $retorno->id]);
+                new TMessage('info', 'Registos Salvos');
+            }
+
+            TTransaction::close();
+        } catch (Exception $e) {
+            new TMessage('error', $e->getMessage());
+            $this->form->setData($this->form->getData());
+            TTransaction::rollback();
+        }
+    }
+    private function statusBaixa($info)
+    {
         TTransaction::open('sample');
 
-        $data = $this->form->getData();
-        $this->form->validate();
+        $saida = new Saida($info->saida_id);
+        $retornoItens = Item_Retorno_Cliente::where('retorno_id', '=', $info->id)->load();
 
-        $retorno = new Retorno_Cliente();
-        $retorno->fromArray((array) $data);
+        $status = 1; // Defina o status inicial como 1
 
-        if ($this->hasNegativeValues($param['products_list_quantidade']) || $this->hasNegativeValues($param['products_list_preco_unit'])) {
-            throw new Exception('Não é permitido inserir valores negativos em quantidade ou preço unitário.');
-        }
-        
-       
-        $itensSaida = Item_Saida::where('saida_id', '=', $retorno->saida_id)->load();
-        $quantidadeTotalSaida = 0;
+        foreach ($retornoItens as $retornoItem) {
+            $itemSaida = Item_Saida::where('saida_id', '=', $info->saida_id)
+                ->where('produto_id', '=', $retornoItem->produto_id)
+                ->first();
 
-        foreach ($itensSaida as $itemSaida) {
-            $quantidadeTotalSaida += $itemSaida->quantidade;
-        }
-
-        if (!empty($retorno->id)) {
-            new TMessage('warning', 'Este Estorno já foi salvo.');
-        } else {
-            $retorno->store();
-
-            Item_Retorno_Cliente::where('retorno_id', '=', $retorno->id)->delete();
-
-           
-            $total = 0;
-
-            if (!empty($param['products_list_produto_id'])) {
-                foreach ($param['products_list_produto_id'] as $key => $item_id) {
-                    $item = new Item_Retorno_Cliente;
-                    $item->produto_id  = $item_id;
-                    $item->preco_unit  = (float) $param['products_list_preco_unit'][$key];
-                    $item->quantidade  = (float) $param['products_list_quantidade'][$key];
-                    $item->total       =  $item->preco_unit * $item->quantidade;
-                    $item->retorno_id  = $retorno->id;
-                   
-                    if ($item->quantidade > $quantidadeTotalSaida) {
-                        $delete = new Retorno_Cliente($retorno->id);
-                        $delete->delete();
-                        throw new Exception('Não é permitido inserir valores maior que a quantidade baixada.');
-
-                    }
-
-                    $item->store();
-                    $total += $item->total;
-                    $this->insertEstoque($item, $item->total, $item->quantidade);
-                }
+            if ($itemSaida && $retornoItem->quantidade_retorno = $itemSaida->quantidade) {
+                $status = 2; // Se algum item tiver quantidade_retorno maior que quantidade baixada, defina o status como 2
+                break;
             }
-            $this->statusBaixa($retorno->saida_id);
-           
-
-            $retorno->valor_total = $total;
-            $retorno->store();
-
-            TForm::sendData('form_retorno', (object) ['id' => $retorno->id]);
-            new TMessage('info', 'Registos Salvos', $this->afterSaveAction);
         }
+
+        $saida->status = $status;
+        $saida->store();
 
         TTransaction::close();
-    } catch (Exception $e) {
-        new TMessage('error', $e->getMessage());
-        $this->form->setData($this->form->getData());
-        TTransaction::rollback();
     }
-}
-private function statusBaixa($info){
-    $saida = new Saida($info->saida_id);
-
-
-
-    $saida->status = 2;
-    $saida->store();
-}
     private function insertEstoque($item, $total, $quantidade)
     {
         try {

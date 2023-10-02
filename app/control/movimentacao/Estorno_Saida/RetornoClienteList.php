@@ -200,7 +200,7 @@ class RetornoClienteList extends TPage
 
       foreach ($itens as $item) {
         $produto_id = $item->produto_id;
-        $quantidade = $item->quantidade;
+        $quantidade = $item->quantidade_retorno;
         $totalValor = $item->total;
 
         $estoque = Estoque::where('produto_id', '=', $produto_id)->first();
