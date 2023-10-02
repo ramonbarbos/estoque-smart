@@ -32,7 +32,7 @@
         <action>RetornoFornecedorList</action>
         <icon>fa fa fa-fw fa-fw</icon>
       </menuitem>
-      <menuitem label="Devolução Saida">
+      <menuitem label="Retorno Saida">
         <action>RetornoClienteList</action>
         <icon>fa fa fa-fw fa-fw</icon>
       </menuitem>

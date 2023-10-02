@@ -40,7 +40,7 @@ use Adianti\Widget\Wrapper\TDBUniqueSearch;
 use Adianti\Wrapper\BootstrapDatagridWrapper;
 use Adianti\Wrapper\BootstrapFormBuilder;
 
-class SaidaForm extends TPage
+class RetornoClienteForm extends TPage
 {
     private $form;
     private $isAtualizado = 0;
@@ -53,17 +53,17 @@ class SaidaForm extends TPage
 
 
         parent::setTargetContainer('adianti_right_panel');
-        $this->setAfterSaveAction(new TAction(['SaidaList', 'onReload'], ['register_state' => 'true']));
+        $this->setAfterSaveAction(new TAction(['RetornoClienteList', 'onReload'], ['register_state' => 'true']));
 
         $this->setDatabase('sample');
-        $this->setActiveRecord('Saida');
+        $this->setActiveRecord('Retorno_Cliente');
 
         // Cria um array com as opções de escolha
 
 
         // Criação do formulário
-        $this->form = new BootstrapFormBuilder('form_saida');
-        $this->form->setFormTitle('Baixa no Estoque');
+        $this->form = new BootstrapFormBuilder('form_retorno');
+        $this->form->setFormTitle('Estornar Baixa');
         $this->form->setClientValidation(true);
         //$this->form->setColumnClasses(2, ['col-sm-4', 'col-sm-4', 'col-sm-4']);
 
@@ -71,11 +71,18 @@ class SaidaForm extends TPage
 
         // Criação de fields
         $id = new TEntry('id');
+        $criteria_saida = new TCriteria();
+        $criteria_saida->add(new TFilter('status', '=', 1));
+        $saida       = new TDBUniqueSearch('saida_id', 'sample', 'Saida', 'id', 'id', null, $criteria_saida);
+        $saida->setMask('Baixa: {id} ');
+        $saida->setChangeAction(new TAction([$this, 'onSaidaChange']));
+
+        $dt_retorno    = new TDate('data_retorno');
         $data    = new TDate('data_saida');
         $data->setId('form_data');
         $tp_saida       = new TDBCombo('tp_saida', 'sample', 'Tipo_Saida', 'id', 'nome');
         $cliente = new TDBCombo('cliente_id', 'sample', 'Cliente', 'id', 'nome');
-        $obs = new TText('obs');
+        $obs = new TText('motivo');
         //-------------------------------------------------------------------------------------
 
         //-------------------------------------------------------------------------------------
@@ -84,37 +91,54 @@ class SaidaForm extends TPage
 
         $criteria_prod = new TCriteria();
         $criteria_prod->add(new TFilter('quantidade', '>', 0));
-        $produto_id = new TDBUniqueSearch('produto_id', 'sample', 'Estoque', 'produto_id', 'produto_id', null, $criteria_prod);
-        $produto_id->setChangeAction(new TAction([$this, 'onProductChange']));
-        $produto_id->setMask('{produto->nome} ({quantidade} disponíveis)');
+        $produto_id = new TEntry('produto_id');
+        // $produto_id->setChangeAction(new TAction([$this, 'onProductChange']));
+      //  $produto_id->setMask('{produto->nome}');
         $preco_unit      = new TEntry('preco_unit');
         $quantidade     = new TSpinner('quantidade');
+       // $quantidade_retorno     = new THidden('quantidade_retorno');
 
 
         // Validação do campo 
-        $data->addValidation('Entrega', new TRequiredValidator);
+        $data->addValidation('Data', new TRequiredValidator);
         $cliente->addValidation('Cliente', new TRequiredValidator);
         $tp_saida->addValidation('Tipo', new TRequiredValidator);
+        $obs->addValidation('Motivo', new TRequiredValidator);
+        $dt_retorno->addValidation('Retorno', new TRequiredValidator);
 
 
 
         $id->setEditable(false);
         $id->setSize('100%');
+        $saida->setSize('100%');
+        $saida->setMinLength(0);
         $cliente->setSize('100%');
-        $cliente->enableSearch();
+        $cliente->setEditable(false);
+        $tp_saida->setEditable(false);
+        $tp_saida->setSize('100%', 80);
         $obs->setSize('100%', 80);
 
-        $produto_id->setMinLength(0);
+        //$produto_id->setMinLength(0);
+        $produto_id->setEditable(false);
+
+        $data->setSize('100%');
         $data->setMask('dd/mm/yyyy');
         $data->setDatabaseMask('yyyy-mm-dd');
+        $data->setEditable(false);
+        $dt_retorno->setMask('dd/mm/yyyy');
+        $dt_retorno->setDatabaseMask('yyyy-mm-dd');
         $quantidade->setRange(0, 100, 0.1);
         $preco_unit->setNumericMask(2, '.', '', true);
         $preco_unit->setEditable(false);
 
+
+
         // fildes 
-        $this->form->addFields([new TLabel('Codigo')], [$id], [new TLabel('Saida (*)', '#FF0000')], [$data],);
-        $this->form->addFields([new TLabel('Tipo (*)', '#FF0000')], [$tp_saida], [new TLabel('Cliente(*)', '#FF0000')], [$cliente]);
-        $this->form->addFields([new TLabel('Obs')], [$obs]);
+        $this->form->addFields([new TLabel('Codigo')], [$id]);
+        $this->form->addFields([new TLabel('Aquisição Baixada (*)', '#FF0000')], [$saida]);
+        $this->form->addFields([new TLabel('Data Solic')], [$data], [new TLabel('Retorno (*)', '#FF0000')], [$dt_retorno]);
+        $this->form->addFields([new TLabel('Tipo')], [$tp_saida], [new TLabel('Cliente')], [$cliente],);
+        $this->form->addFields([new TLabel('Motivo (*)', '#FF0000')], [$obs]);
 
         // fildes 1 tab
         $subform = new BootstrapFormBuilder;
@@ -122,7 +146,7 @@ class SaidaForm extends TPage
         $subform->setProperty('style', 'border:none');
 
         $subform->appendPage('Produtos');
-        $subform->addFields([$uniqid], [$detail_id],);
+        $subform->addFields([$uniqid], [$detail_id] );
         $subform->addFields([new TLabel('Produto (*)', '#FF0000')], [$produto_id], [new TLabel('Quant. (*)', '#FF0000')], [$quantidade],);
         $subform->addFields([new TLabel('Preço (*)', '#FF0000')], [$preco_unit]);
         $add_product = TButton::create('add_product', [$this, 'onProductAdd'], 'Register', 'fa:plus-circle green');
@@ -176,7 +200,7 @@ class SaidaForm extends TPage
 
         // add the actions to the datagrid
         $this->product_list->addAction($action1, _t('Edit'), 'far:edit blue');
-        $this->product_list->addAction($action2, _t('Delete'), 'far:trash-alt red');
+        //$this->product_list->addAction($action2, _t('Delete'), 'far:trash-alt red');
 
         $this->product_list->createModel();
 
@@ -215,6 +239,37 @@ class SaidaForm extends TPage
 
         parent::add($container);
     }
+    public static function onSaidaChange($params)
+    {
+        if (!empty($params['saida_id'])) {
+            try {
+                $saida_id = $params['saida_id'];
+                TTransaction::open('sample');
+                $saida = new Saida($saida_id);
+                $saida_items = Item_Saida::where('saida_id', '=', $saida_id)->load();
+
+                $formInstance = new self;
+                $formInstance->form->getField('tp_saida')->setEditable(false);
+                $formInstance->form->getField('cliente_id')->setEditable(false);
+                //$formInstance->form->getField('preco_unit')->setEditable(false);
+
+                foreach ($saida_items as $item) {
+                    $item->uniqid = uniqid();
+                    $row = $formInstance->product_list->addItem((object) $item);
+                    $row->id = $item->uniqid;
+                    TDataGrid::replaceRowById('products_list', $item->uniqid, $row);
+                }
+
+                $saida->id     = '';
+                TForm::sendData('form_retorno', (object) $saida);
+                TTransaction::close();
+            } catch (Exception $e) {
+                new TMessage('error', $e->getMessage());
+                TTransaction::rollback();
+            }
+        }
+    }
+
 
     public static function onProductChange($params)
     {
@@ -223,7 +278,7 @@ class SaidaForm extends TPage
                 $produto_id = $params['produto_id'];
                 TTransaction::open('sample');
                 $estoque   = Estoque::where('produto_id', '=', $produto_id)->first();
-                TForm::sendData('form_saida', (object) ['preco_unit' => $estoque->preco_unit]);
+                TForm::sendData('form_retorno', (object) ['preco_unit' => $estoque->preco_unit]);
                 TTransaction::close();
             } catch (Exception $e) {
                 new TMessage('error', $e->getMessage());
@@ -268,7 +323,7 @@ class SaidaForm extends TPage
             // $data->product_detail_discount   = '';
 
             // send data, do not fire change/exit events
-            TForm::sendData('form_saida', $data, false, false);
+            TForm::sendData('form_retorno', $data, false, false);
         } catch (Exception $e) {
             $this->form->setData($this->form->getData());
             new TMessage('error', $e->getMessage());
@@ -285,7 +340,7 @@ class SaidaForm extends TPage
         //$data->product_detail_discount   = $param['discount'];
 
         // send data, do not fire change/exit events
-        TForm::sendData('form_saida', $data, false, false);
+        TForm::sendData('form_retorno', $data, false, false);
     }
 
     /**
@@ -303,7 +358,7 @@ class SaidaForm extends TPage
         //$data->product_detail_discount   = '';
 
         // send data, do not fire change/exit events
-        TForm::sendData('form_saida', $data, false, false);
+        TForm::sendData('form_retorno', $data, false, false);
 
         // remove row
         TDataGrid::removeRowById('products_list', $param['uniqid']);
@@ -316,27 +371,25 @@ class SaidaForm extends TPage
             if (isset($param['key'])) {
                 $key = $param['key'];
 
-                $object = new Saida($key);
-                $saida_items = Item_Saida::where('saida_id', '=', $object->id)->load();
+                $retorno = new Retorno_Cliente($key);
+                $saida = new Saida($retorno->saida_id);
+                $retorno_itens = Item_Retorno_Cliente::where('retorno_id', '=', $retorno->id)->load();
                 $this->form->getField('produto_id')->setEditable(false);
                 $this->form->getField('quantidade')->setEditable(false);
                 $this->form->getField('preco_unit')->setEditable(false);
 
-                if ($object->status == 0) {
-                    $alert = new TAlert('warning', 'Saida foi cancelada.');
+                if ($retorno->status == 0) {
+                    $alert = new TAlert('warning', 'Estorno foi cancelado.');
                     $alert->show();
-                }else if($object->status == 2){
-                    $alert = new TAlert('warning', 'Saida foi Estornada.');
-                    $alert->show();
-
                 }
 
-                foreach ($saida_items as $item) {
+                foreach ($retorno_itens as $item) {
                     $item->uniqid = uniqid();
                     $row = $this->product_list->addItem($item);
                     $row->id = $item->uniqid;
                 }
-                $this->form->setData($object);
+                $this->form->setData($retorno,);
+                $this->form->setData($saida);
                 TTransaction::close();
             } else {
                 $this->form->clear();
@@ -347,62 +400,85 @@ class SaidaForm extends TPage
         }
     }
     public function onSave($param)
-    {
-        try {
-            TTransaction::open('sample');
+{
+    try {
+        TTransaction::open('sample');
 
-            $data = $this->form->getData();
-            $this->form->validate();
+        $data = $this->form->getData();
+        $this->form->validate();
 
-            $saida = new Saida;
-            $saida->fromArray((array) $data);
+        $retorno = new Retorno_Cliente();
+        $retorno->fromArray((array) $data);
 
-            if ($this->hasNegativeValues($param['products_list_quantidade']) || $this->hasNegativeValues($param['products_list_preco_unit'])) {
-                throw new Exception('Não é permitido inserir valores negativos em quantidade ou preço unitário.');
-            }
-            if (!empty($saida->id)) {
-                new TMessage('warning', 'Esta Saida já foi salva.', $this->afterSaveAction);
-            } else {
-                $saida->store();
-
-                Item_Saida::where('saida_id', '=', $saida->id)->delete();
-
-                $total = 0;
-
-                if (!empty($param['products_list_produto_id'])) {
-
-                    foreach ($param['products_list_produto_id'] as $key => $item_id) {
-                        $item = new Item_Saida;
-                        $item->produto_id  = $item_id;
-                        $item->preco_unit  = (float) $param['products_list_preco_unit'][$key];
-                        $item->quantidade      = (float) $param['products_list_quantidade'][$key];
-                        $item->total       =  $item->preco_unit * $item->quantidade;
-
-                        $item->saida_id = $saida->id;
-                        $item->store();
-                        $total += $item->total;
-                        $this->removeEstoque($item, $item->total, $item->quantidade);
-                        $this->createMovement($item);
-                    }
-                }
-
-                $saida->valor_total = $total;
-                $saida->created_at = date('Y-m-d H:i:s');
-                $saida->store();
-
-                TForm::sendData('form_saida', (object) ['id' => $saida->id]);
-                new TMessage('info', 'Registos Salvos', $this->afterSaveAction);
-            }
-
-            TTransaction::close();
-        } catch (Exception $e) {
-            new TMessage('error', $e->getMessage());
-            $this->form->setData($this->form->getData());
-            TTransaction::rollback();
+        if ($this->hasNegativeValues($param['products_list_quantidade']) || $this->hasNegativeValues($param['products_list_preco_unit'])) {
+            throw new Exception('Não é permitido inserir valores negativos em quantidade ou preço unitário.');
         }
-    }
+        
+       
+        $itensSaida = Item_Saida::where('saida_id', '=', $retorno->saida_id)->load();
+        $quantidadeTotalSaida = 0;
 
-    private function removeEstoque($item, $total, $quantidade)
+        foreach ($itensSaida as $itemSaida) {
+            $quantidadeTotalSaida += $itemSaida->quantidade;
+        }
+
+        if (!empty($retorno->id)) {
+            new TMessage('warning', 'Este Estorno já foi salvo.');
+        } else {
+            $retorno->store();
+
+            Item_Retorno_Cliente::where('retorno_id', '=', $retorno->id)->delete();
+
+           
+            $total = 0;
+
+            if (!empty($param['products_list_produto_id'])) {
+                foreach ($param['products_list_produto_id'] as $key => $item_id) {
+                    $item = new Item_Retorno_Cliente;
+                    $item->produto_id  = $item_id;
+                    $item->preco_unit  = (float) $param['products_list_preco_unit'][$key];
+                    $item->quantidade  = (float) $param['products_list_quantidade'][$key];
+                    $item->total       =  $item->preco_unit * $item->quantidade;
+                    $item->retorno_id  = $retorno->id;
+                   
+                    if ($item->quantidade > $quantidadeTotalSaida) {
+                        $delete = new Retorno_Cliente($retorno->id);
+                        $delete->delete();
+                        throw new Exception('Não é permitido inserir valores maior que a quantidade baixada.');
+
+                    }
+
+                    $item->store();
+                    $total += $item->total;
+                    $this->insertEstoque($item, $item->total, $item->quantidade);
+                }
+            }
+            $this->statusBaixa($retorno->saida_id);
+           
+
+            $retorno->valor_total = $total;
+            $retorno->store();
+
+            TForm::sendData('form_retorno', (object) ['id' => $retorno->id]);
+            new TMessage('info', 'Registos Salvos', $this->afterSaveAction);
+        }
+
+        TTransaction::close();
+    } catch (Exception $e) {
+        new TMessage('error', $e->getMessage());
+        $this->form->setData($this->form->getData());
+        TTransaction::rollback();
+    }
+}
+private function statusBaixa($info){
+    $saida = new Saida($info->saida_id);
+
+
+
+    $saida->status = 2;
+    $saida->store();
+}
+    private function insertEstoque($item, $total, $quantidade)
     {
         try {
             TTransaction::open('sample');
@@ -410,10 +486,29 @@ class SaidaForm extends TPage
             // Buscar o estoque existente para o produto
             $estoque = Estoque::where('produto_id', '=', $item->produto_id)->first();
 
+            // Calcular a média ponderada
+            $mediaPonderadaEstoque = 0;
+            if ($estoque) {
+                $mediaPonderadaEstoque = ($estoque->valor_total + $total) / ($estoque->quantidade + $quantidade);
+            } else {
+                $mediaPonderadaEstoque = $item->preco_unit;
+            }
+
             // Atualizar ou inserir o registro de estoque
             if ($estoque) {
-                $estoque->quantidade -= $quantidade;
-                $estoque->valor_total -= $total;
+                if ($estoque->quantidade != $quantidade || $estoque->preco_unit != $item->preco_unit) {
+
+                    $estoque->quantidade += $quantidade;
+                    $estoque->preco_unit = $mediaPonderadaEstoque;
+                    $estoque->valor_total = $estoque->quantidade * $mediaPonderadaEstoque;
+                }
+            } else {
+                // O produto não existe no estoque, insira um novo registro
+                $estoque = new Estoque;
+                $estoque->produto_id = $item->produto_id;
+                $estoque->quantidade = $quantidade;
+                $estoque->preco_unit = $mediaPonderadaEstoque;
+                $estoque->valor_total = $quantidade * $mediaPonderadaEstoque;
             }
 
             $estoque->store();

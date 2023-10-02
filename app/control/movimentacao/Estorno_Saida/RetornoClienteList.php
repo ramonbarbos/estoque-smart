@@ -24,7 +24,7 @@ use Adianti\Widget\Wrapper\TDBUniqueSearch;
 use Adianti\Wrapper\BootstrapDatagridWrapper;
 use Adianti\Wrapper\BootstrapFormBuilder;
 
-class SaidaList extends TPage
+class RetornoClienteList extends TPage
 {
   protected $form;
   protected $datagrid;
@@ -42,17 +42,17 @@ class SaidaList extends TPage
 
     //Conexão com a tabela
     $this->setDatabase('sample');
-    $this->setActiveRecord('Saida');
+    $this->setActiveRecord('Retorno_Cliente');
     $this->setDefaultOrder('id', 'asc');
     $this->setLimit(10);
 
-    $this->addFilterField('data_saida', '=', 'data_saida');
+    $this->addFilterField('data_retorno', '=', 'data_retorno');
     $this->addFilterField('cliente_id', '=', 'cliente_id');
 
 
     //Criação do formulario 
-    $this->form = new BootstrapFormBuilder('form_search_Saida');
-    $this->form->setFormTitle('Saida do Estoque');
+    $this->form = new BootstrapFormBuilder('form_search_retorno');
+    $this->form->setFormTitle('Estorno do Saida');
 
     //Criação de fields
     $data = new TDate('data_saida');
@@ -72,7 +72,7 @@ class SaidaList extends TPage
     //Adicionar field de busca
     $btn = $this->form->addAction(_t('Find'), new TAction([$this, 'onSearch']), 'fa:search');
     $btn->class = 'btn btn-sm btn-primary';
-    $this->form->addActionLink(_t('New'), new TAction(['SaidaForm', 'onEdit'], ['register_state' => 'false']), 'fa:plus green');
+    $this->form->addActionLink(_t('New'), new TAction(['RetornoClienteForm', 'onEdit'], ['register_state' => 'false']), 'fa:plus green');
 
     //Criando a data grid
     $this->datagrid = new BootstrapDatagridWrapper(new TDataGrid);
@@ -80,12 +80,12 @@ class SaidaList extends TPage
 
     //Criando colunas da datagrid
     $column_id = new TDataGridColumn('id', 'Codigo', 'left');
-    $column_dt_saida = new TDataGridColumn('data_saida', 'Data de Saida', 'left');
+    $column_dt_retorno = new TDataGridColumn('data_retorno', 'Data', 'left');
     $column_clie = new TDataGridColumn('cliente->nome', 'Cliente', 'left');
     $column_status = new TDataGridColumn('status', 'Status', 'left');
-    $column_total = new TDataGridColumn('valor_total', 'Total', 'left');
+    $column_total = new TDataGridColumn('total', 'Total', 'left');
 
-    $column_dt_saida->setTransformer(function ($value, $object, $row) {
+    $column_dt_retorno->setTransformer(function ($value, $object, $row) {
       // Formate a data para o formato desejado (por exemplo, 'd/m/Y')
       return date('d/m/Y', strtotime($value));
     });
@@ -99,28 +99,21 @@ class SaidaList extends TPage
     $column_total->setTransformer($formato_valor);
 
     $column_status->setTransformer(function ($value, $object, $row) {
-      if($value == 0){
-        return "<span style='color:red'>Cancelado</span>";
-      } else if($value == 1){
-        return  "<span style='color:green'>Baixado</span>"  ;
-      } else if($value == 2){
-        return "<span style='color:orange'>Estornado</span>";
-      }
-     
+      return ($value == 1) ? "<span style='color:green'>Estornado</span>" : "<span style='color:red'>Cancelado</span>";
     });
     //add coluna da datagrid
     $this->datagrid->addColumn($column_id);
-    $this->datagrid->addColumn($column_dt_saida);
+    $this->datagrid->addColumn($column_dt_retorno);
     $this->datagrid->addColumn($column_status);
     $this->datagrid->addColumn($column_clie);
     $this->datagrid->addColumn($column_total);
 
     //Criando ações para o datagrid
-    $column_dt_saida->setAction(new TAction([$this, 'onReload']), ['order' => 'data_saida']);
+    $column_dt_retorno->setAction(new TAction([$this, 'onReload']), ['order' => 'data_retorno']);
     $column_clie->setAction(new TAction([$this, 'onReload']), ['order' => 'cliente_id']);
     $column_total->setAction(new TAction([$this, 'onReload']), ['order' => 'valor_total']);
 
-    $action1 = new TDataGridAction(['SaidaForm', 'onEdit'], ['id' => '{id}', 'register_state' => 'false']);
+    $action1 = new TDataGridAction(['RetornoClienteForm', 'onEdit'], ['id' => '{id}', 'register_state' => 'false']);
     $action2 = new TDataGridAction([$this, 'onDelete'], ['id' => '{id}']);
     $action3 = new TDataGridAction([$this, 'onCancel'], ['id' => '{id}']);
 
@@ -169,27 +162,28 @@ class SaidaList extends TPage
 
         TTransaction::open('sample');
 
-        $saida = new Saida($id);
+        $retorno = new Retorno_Cliente($id);
 
-        if ($saida) {
-          if ($saida->status == 1 ) {
-            $saida->status = 0;
+        if ($retorno) {
+          if ($retorno->status == 1) {
+            $retorno->status = 0;
 
-            $this->cancelEstoque($saida);
+            $saida = new Saida($retorno->saida_id);
+            $saida->status = 1;
             $saida->store();
+
+            $this->cancelEstoque($retorno);
+            $retorno->store();
 
             TTransaction::close();
 
-            new TMessage('info', 'Saida Cancelada.', $this->afterSaveAction);
+            new TMessage('info', 'Estorno Cancelado.', $this->afterSaveAction);
             $this->onReload([]);
-          } else if($saida->status == 2) {
-            throw new Exception("A saida foi estornada. Verifique Estorno Cliente.");
-          }else{
-            throw new Exception("A saida foi cancelada.");
-
+          } else {
+            throw new Exception("A retorno já está cancelada.");
           }
         } else {
-          throw new Exception("Saida não encontrada.");
+          throw new Exception("Estorno não encontrada.");
         }
       }
     } catch (Exception $e) {
@@ -197,12 +191,12 @@ class SaidaList extends TPage
       TTransaction::rollback();
     }
   }
-  private function cancelEstoque($saida)
+  private function cancelEstoque($retorno)
   {
     try {
       TTransaction::open('sample');
 
-      $itens = Item_Saida::where('saida_id', '=', $saida->id)->load();
+      $itens = Item_Retorno_Cliente::where('retorno_id', '=', $retorno->id)->load();
 
       foreach ($itens as $item) {
         $produto_id = $item->produto_id;
@@ -220,8 +214,8 @@ class SaidaList extends TPage
             throw new Exception("O valor total no estoque do produto $produto_id não pode ser negativo.");
           }
 
-          $estoque->quantidade += $quantidade;
-          $estoque->valor_total += $totalValor;
+          $estoque->quantidade -= $quantidade;
+          $estoque->valor_total -= $totalValor;
 
           if ($estoque->quantidade == 0) {
             $estoque->preco_unit = 0;
@@ -249,18 +243,18 @@ class SaidaList extends TPage
       $id = $param['key']; //ID da saida
       TTransaction::open('sample');
 
-      $saida = new Saida($id);
+      $retorno = new Retorno_Cliente($id);
 
-      if ($saida->status == 0) {
-        if ($saida) {
-          $this->deleteMovement($saida);
-          Item_Saida::where('saida_id', '=', $saida->id)->delete();
-          $saida->delete();
-          new TMessage('info', 'Saida deletada.', $this->afterSaveAction);
+      if ($retorno->status == 0) {
+        if ($retorno) {
+         // $this->deleteMovement($retorno);
+          Item_Retorno_Cliente::where('retorno_id', '=', $retorno->id)->delete();
+          $retorno->delete();
+          new TMessage('info', 'Estorno deletada.', $this->afterSaveAction);
           $this->onReload([]);
         }
       } else {
-        new TMessage('warning', 'É necessario a saida está cancelada.', $this->afterSaveAction);
+        new TMessage('warning', 'É necessario o estorno está cancelado.', $this->afterSaveAction);
       }
     }
   }

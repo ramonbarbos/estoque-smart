@@ -1,9 +1,9 @@
 <?php
 use Adianti\Database\TRecord;
 
-class Retorno_Cliente extends TRecord
+class Item_Retorno_Cliente extends TRecord
 {
-    const TABLENAME = 'retorno_cliente';
+    const TABLENAME = 'item_retorno_cliente';
     const PRIMARYKEY = 'id';
     const IDPOLICY = 'max';
 
@@ -12,12 +12,12 @@ class Retorno_Cliente extends TRecord
         parent::__construct($id, $callObjectLoad);
 
         // Adicione os atributos normais
-        parent::addAttribute('saida_id');
-        parent::addAttribute('data_retorno');
-        parent::addAttribute('cliente_id');
-        parent::addAttribute('motivo');
-        parent::addAttribute('valor_total');    
-        parent::addAttribute('status');    
+        parent::addAttribute('retorno_id');
+        parent::addAttribute('produto_id');
+        parent::addAttribute('quantidade_baixa');    
+        parent::addAttribute('quantidade_retorno');    
+        parent::addAttribute('preco_unit');    
+        parent::addAttribute('total');    
       
     }
 
