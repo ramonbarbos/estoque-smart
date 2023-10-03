@@ -368,6 +368,7 @@ class SaidaForm extends TPage
                 Item_Saida::where('saida_id', '=', $saida->id)->delete();
 
                 $total = 0;
+                $quantidadeTotal = 0;
 
                 if (!empty($param['products_list_produto_id'])) {
 
@@ -381,11 +382,13 @@ class SaidaForm extends TPage
                         $item->saida_id = $saida->id;
                         $item->store();
                         $total += $item->total;
+                        $quantidadeTotal += $item->quantidade;
                         $this->removeEstoque($item, $item->total, $item->quantidade);
                         $this->createMovement($item);
                     }
                 }
 
+                $saida->quantidade_total = $quantidadeTotal;
                 $saida->valor_total = $total;
                 $saida->created_at = date('Y-m-d H:i:s');
                 $saida->store();

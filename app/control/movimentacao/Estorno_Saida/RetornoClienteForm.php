@@ -419,21 +419,10 @@ class RetornoClienteForm extends TPage
                 throw new Exception('Não é permitido inserir valores negativos em quantidade ou preço unitário.');
             }
 
-
-            $itensSaida = Item_Saida::where('saida_id', '=', $retorno->saida_id)->load();
-            $quantidadeTotalSaida = 0;
-
-            foreach ($itensSaida as $itemSaida) {
-                $quantidadeTotalSaida += $itemSaida->quantidade;
-            }
-
             if (!empty($retorno->id)) {
                 new TMessage('warning', 'Este Estorno já foi salvo.');
             } else {
                 $retorno->store();
-
-                Item_Retorno_Cliente::where('retorno_id', '=', $retorno->id)->delete();
-
 
                 $total = 0;
 
@@ -447,25 +436,36 @@ class RetornoClienteForm extends TPage
                         $item->total       =  $item->preco_unit * $item->quantidade_retorno;
                         $item->retorno_id  = $retorno->id;
 
-                        if ($item->quantidade_retorno > $quantidadeTotalSaida) {
+                        $itemSaida = Item_Saida::where('saida_id', '=', $retorno->saida_id)
+                            ->where('produto_id', '=', $item->produto_id)
+                            ->first();
+
+                        if (!$itemSaida || $item->quantidade_retorno > $itemSaida->quantidade) {
                             $delete = new Retorno_Cliente($retorno->id);
                             $delete->delete();
-                            throw new Exception('Não é permitido inserir valores maior que a quantidade baixada.');
+                            throw new Exception('Não é permitido inserir valores maior que a quantidade baixada ou o item não existe na saída.');
                         }
+                        if(empty($item->quantidade_retorno )){
+                            $delete = new Retorno_Cliente($retorno->id);
+                            $delete->delete();
+                            throw new Exception('Voce precisa informar a quantidade de estorno nos produtos.');
+                        }
+
 
                         $item->store();
                         $total += $item->total;
+
                         $this->insertEstoque($item, $item->total, $item->quantidade_retorno);
                     }
                 }
-                $this->statusBaixa($retorno);
 
-
+                $this->atualizarQuantidadeTotalSaida($retorno );
+                $this->atualizarStatusSaida($retorno );
                 $retorno->valor_total = $total;
                 $retorno->store();
 
                 TForm::sendData('form_retorno', (object) ['id' => $retorno->id]);
-                new TMessage('info', 'Registos Salvos');
+                new TMessage('info', 'Registos Salvos.', $this->afterSaveAction);
             }
 
             TTransaction::close();
@@ -475,31 +475,35 @@ class RetornoClienteForm extends TPage
             TTransaction::rollback();
         }
     }
-    private function statusBaixa($info)
+
+    private function atualizarQuantidadeTotalSaida($info)
     {
-        TTransaction::open('sample');
-
         $saida = new Saida($info->saida_id);
-        $retornoItens = Item_Retorno_Cliente::where('retorno_id', '=', $info->id)->load();
-
-        $status = 1; // Defina o status inicial como 1
-
-        foreach ($retornoItens as $retornoItem) {
-            $itemSaida = Item_Saida::where('saida_id', '=', $info->saida_id)
-                ->where('produto_id', '=', $retornoItem->produto_id)
-                ->first();
-
-            if ($itemSaida && $retornoItem->quantidade_retorno = $itemSaida->quantidade) {
-                $status = 2; // Se algum item tiver quantidade_retorno maior que quantidade baixada, defina o status como 2
-                break;
-            }
+        $quantidadeTotalOriginal = $saida->quantidade_total;
+        
+    
+        $itensRetorno = Item_Retorno_Cliente::where('retorno_id', '=', $info->id)->load();
+        $novaQuantidadeTotal = $quantidadeTotalOriginal;
+        
+        foreach ($itensRetorno as $itemRetorno) {
+            $novaQuantidadeTotal -= $itemRetorno->quantidade_retorno;
         }
-
-        $saida->status = $status;
+        
+        $saida->quantidade_total = $novaQuantidadeTotal;
         $saida->store();
-
-        TTransaction::close();
     }
+
+    private function atualizarStatusSaida($info)
+    {
+        $saida = new Saida($info->saida_id);
+        $quantidadeTotal = $saida->quantidade_total;
+    
+        if ($quantidadeTotal == 0) {
+            $saida->status = 2;  
+            $saida->store();
+        }
+    }
+
     private function insertEstoque($item, $total, $quantidade)
     {
         try {

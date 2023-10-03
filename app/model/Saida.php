@@ -17,6 +17,7 @@ class Saida extends TRecord
         parent::addAttribute('cliente_id');
         parent::addAttribute('obs');
         parent::addAttribute('valor_total');    
+        parent::addAttribute('quantidade_total');    
         parent::addAttribute('status');    
       
     }

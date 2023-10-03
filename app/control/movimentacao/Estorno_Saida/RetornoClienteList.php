@@ -225,6 +225,7 @@ class RetornoClienteList extends TPage
           }
 
           $estoque->store();
+          $this->atualizarQuantidadeTotalSaida($retorno);
           $this->cancelMovement($item);
 
         }
@@ -257,6 +258,32 @@ class RetornoClienteList extends TPage
         new TMessage('warning', 'É necessario o estorno está cancelado.', $this->afterSaveAction);
       }
     }
+  }
+  private function atualizarQuantidadeTotalSaida($info)
+  {
+      $saida = new Saida($info->saida_id);
+      $quantidadeTotalOriginal = $saida->quantidade_total;
+  
+      $itensRetorno = Item_Retorno_Cliente::where('retorno_id', '=', $info->id)->load();
+      $novaQuantidadeTotal = $quantidadeTotalOriginal;
+      
+      foreach ($itensRetorno as $itemRetorno) {
+          $novaQuantidadeTotal += $itemRetorno->quantidade_retorno;
+      }
+      
+      $saida->quantidade_total = $novaQuantidadeTotal;
+      $saida->store();
+  }
+
+  private function atualizarStatusSaida($info)
+  {
+      $saida = new Saida($info->saida_id);
+      $quantidadeTotal = $saida->quantidade_total;
+  
+      if ($quantidadeTotal == 0) {
+          $saida->status = 2;  
+          $saida->store();
+      }
   }
   private function deleteMovement($saida)
   {
