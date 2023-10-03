@@ -107,7 +107,7 @@ class SaidaForm extends TPage
         $produto_id->setMinLength(0);
         $data->setMask('dd/mm/yyyy');
         $data->setDatabaseMask('yyyy-mm-dd');
-        $quantidade->setRange(0, 100, 0.1);
+        $quantidade->setRange(0, 1000, 1);
         $preco_unit->setNumericMask(2, '.', '', true);
         $preco_unit->setEditable(false);
 

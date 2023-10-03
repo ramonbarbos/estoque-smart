@@ -79,7 +79,8 @@ class EntradaForm extends TPage
         //-------------------------------------------------------------------------------------
         $uniqid      = new THidden('uniqid');
         $detail_id         = new THidden('detail_id');
-        $produto_id = new TDBUniqueSearch('produto_id', 'sample', 'Produto', 'id', 'nome');
+        $produto_id = new TDBUniqueSearch('produto_id', 'sample', 'Produto', 'id', 'id');
+        $produto_id->setMask('{nome} - {descricao}');
         $preco_unit      = new TEntry('preco_unit');
         $quantidade     = new TSpinner('quantidade');
 
@@ -101,9 +102,11 @@ class EntradaForm extends TPage
         $produto_id->setMinLength(0);
         $data->setMask('dd/mm/yyyy');
         $data->setDatabaseMask('yyyy-mm-dd');
-        $nf->setNumericMask(2, '', '', true);
+       // $nf->setNumericMask(2, '', '', true);
         $dt_nf->setSize('50%');
-        $quantidade->setRange(0,100,0.1);
+        $dt_nf->setMask('dd/mm/yyyy');
+        $dt_nf->setDatabaseMask('yyyy-mm-dd');
+        $quantidade->setRange(0,1000,1);
         $preco_unit->setNumericMask(2, '.', '', true);
         // fildes 
         $this->form->addFields([new TLabel('Codigo')], [$id], [new TLabel('Entrega (*)', '#FF0000')], [$data],);
@@ -159,7 +162,7 @@ class EntradaForm extends TPage
             return Produto::findInTransaction('sample', $value)->descricao;
         });
 
-        $col_subt->enableTotal('sum', 'R$', 2, ',', '.');
+        $col_subt->enableTotal('sum', 'R$', '.', '');
 
         $col_id->setVisibility(false);
         $col_uniq->setVisibility(false);
@@ -185,7 +188,7 @@ class EntradaForm extends TPage
 
         $format_value = function ($value) {
             if (is_numeric($value)) {
-                return 'R$ ' . number_format($value, 2, ',', '.');
+                return 'R$ ' . number_format($value, 2, '.', '');
             }
             return $value;
         };

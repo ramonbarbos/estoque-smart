@@ -28,146 +28,131 @@ use Adianti\Wrapper\BootstrapFormBuilder;
 
 class ProdutoForm extends TPage
 {
-    private $form;
+  private $form;
 
-    use Adianti\base\AdiantiStandardFormTrait;
+  use Adianti\base\AdiantiStandardFormTrait;
 
-    public function __construct()
-    {
-        parent::__construct();
+  public function __construct()
+  {
+    parent::__construct();
 
-        parent::setTargetContainer('adianti_right_panel');
-        $this->setAfterSaveAction(new TAction(['ProdutoList', 'onReload'], ['register_state' => 'true']));
+    parent::setTargetContainer('adianti_right_panel');
+    $this->setAfterSaveAction(new TAction(['ProdutoList', 'onReload'], ['register_state' => 'true']));
 
-        $this->setDatabase('sample');
-        $this->setActiveRecord('Produto');
+    $this->setDatabase('sample');
+    $this->setActiveRecord('Produto');
 
-        // Cria um array com as opções de escolha
-      
+    // Cria um array com as opções de escolha
 
-        // Criação do formulário
-        $this->form = new BootstrapFormBuilder('form_Produto');
-        $this->form->setFormTitle('Produto');
-        $this->form->setClientValidation(true);
-        $this->form->setColumnClasses(2, ['col-sm-5 col-lg-4', 'col-sm-7 col-lg-8']);
 
-    
-      
+    // Criação do formulário
+    $this->form = new BootstrapFormBuilder('form_Produto');
+    $this->form->setFormTitle('Produto');
+    $this->form->setClientValidation(true);
+    $this->form->setColumnClasses(2, ['col-sm-5 col-lg-4', 'col-sm-7 col-lg-8']);
 
-        // Criação de fields
-        $id = new TEntry('id');
-        $nome = new TEntry('nome');
-        $descricao = new TText('descricao');
 
-        // Adicione fields ao formulário
-        $this->form->addFields([new TLabel('Id')], [$id]);
-        $this->form->addFields([new TLabel('Nome')], [$nome]);
-        $this->form->addFields([new TLabel('Descrição')], [$descricao]);
 
-       
-        // Validação do campo Nome
-        $nome->addValidation('Nome', new TRequiredValidator);
-        
-        // Tornar o campo ID não editável
-        $id->setEditable(false);
 
-        // Tamanho dos campos
-        $id->setSize('100%');
-        $nome->setSize('100%');
-        $descricao->setSize('100%');
+    // Criação de fields
+    $id = new TEntry('id');
+    $nome = new TEntry('nome');
+    $descricao = new TText('descricao');
 
-        // Adicionar botão de salvar
-        $btn = $this->form->addAction(_t('Save'), new TAction([$this, 'onSave']), 'fa:plus green');
-        $btn->class = 'btn btn-sm btn-primary';
+    // Adicione fields ao formulário
+    $this->form->addFields([new TLabel('Id')], [$id]);
+    $this->form->addFields([new TLabel('Nome')], [$nome]);
+    $this->form->addFields([new TLabel('Descrição')], [$descricao]);
 
-        // Adicionar link para criar um novo registro
-        $this->form->addActionLink(_t('New'), new TAction([$this, 'onEdit']), 'fa:eraser red');
 
-        // Adicionar link para fechar o formulário
-        $this->form->addHeaderActionLink(_t('Close'), new TAction([$this, 'onClose']), 'fa:times red');
+    // Validação do campo Nome
+    $nome->addValidation('Nome', new TRequiredValidator);
 
-        // Vertical container
-        $container = new TVBox;
-        $container->style = 'width: 100%';
-        $container->add($this->form);
+    // Tornar o campo ID não editável
+    $id->setEditable(false);
 
-        parent::add($container);
-    }
+    // Tamanho dos campos
+    $id->setSize('100%');
+    $nome->setSize('100%');
+    $descricao->setSize('100%');
 
-    public function onEdit($param)
-    {
-      if (isset($param['key'])) {
-        // Obtém o ID do cliente a ser excluído
-        $id = $param['key']; 
-  
-        TTransaction::open('sample');
-        $entrada = Entrada::where('produto_id', '=', $id)
-                           ->first();
-        if ($entrada) {
-          $retorno_id =  $entrada->id;
-  
-          // Verifica se existem saídas relacionadas a este estoque
-          if ($this->hasRelatedOutbound($retorno_id)) {
-                 $entrada = new Produto($id);
-                $this->form->setData($entrada);
-                $this->form->getField('id')->setEditable(false);
-                $this->form->getField('nome')->setEditable(false);
-                $this->form->getField('descricao')->setEditable(false);
-                 $alert = new TAlert('warning', 'Não é possível editar este produto, pois já existem vinculações.');
-                 $alert->show();
-                 
-          } else {
-            try {
-              // editar o cliente
-              TTransaction::open('sample');
-              $object = new Produto($id);
-              $this->form->setData($object);
-  
-              TTransaction::close();
-  
-            } catch (Exception $e) {
-              new TMessage('error', $e->getMessage());
-            }
-          }
+    // Adicionar botão de salvar
+    $btn = $this->form->addAction(_t('Save'), new TAction([$this, 'onSave']), 'fa:plus green');
+    $btn->class = 'btn btn-sm btn-primary';
+
+    // Adicionar link para criar um novo registro
+    $this->form->addActionLink(_t('New'), new TAction([$this, 'onEdit']), 'fa:eraser red');
+
+    // Adicionar link para fechar o formulário
+    $this->form->addHeaderActionLink(_t('Close'), new TAction([$this, 'onClose']), 'fa:times red');
+
+    // Vertical container
+    $container = new TVBox;
+    $container->style = 'width: 100%';
+    $container->add($this->form);
+
+    parent::add($container);
+  }
+
+  public function onEdit($param)
+  {
+    if (isset($param['key'])) {
+      // Obtém o ID do cliente a ser excluído
+      $id = $param['key'];
+
+      TTransaction::open('sample');
+      $itemEntrada = Item_Entrada::where('produto_id', '=', $id)->first();
+
+      if ($itemEntrada) {
+        $retorno_id =  $itemEntrada->id;
+
+        // Verifica se existem saídas relacionadas a este estoque
+        if ($this->hasRelatedOutbound($retorno_id)) {
+          $entrada = new Produto($id);
+          $this->form->setData($entrada);
+          $this->form->getField('id')->setEditable(false);
+          $this->form->getField('nome')->setEditable(false);
+          $this->form->getField('descricao')->setEditable(false);
+          $alert = new TAlert('warning', 'Não é possível editar este produto, pois já existem vinculações.');
+          $alert->show();
         } else {
-            try {
-                TTransaction::open('sample');
-                $object = new Produto($id);
-                $this->form->setData($object);
-    
-                TTransaction::close();
-    
-              } catch (Exception $e) {
-                new TMessage('error', $e->getMessage());
-              }
+
+
+          $object = new Produto($id);
+          $this->form->setData($object);
         }
+      } else {
+        $object = new Produto($id);
+        $this->form->setData($object);
       }
+      TTransaction::close();
     }
-  
-    
-    private function hasRelatedOutbound($id)
-    {
-      try {
-        // Verifique se há saídas relacionadas a este estoque
-        TTransaction::open('sample');
-        $criteria = new TCriteria;
-        $criteria->add(new TFilter('id', '=', $id));
-        $repository = new TRepository('Entrada');
-        $count = $repository->count($criteria);
-        TTransaction::close();
-  
-        return $count > 0;
-      } catch (Exception $e) {
-        // Em caso de erro, trate-o de acordo com suas necessidades
-        new TMessage('error', $e->getMessage());
-        return false;
-      }
-    }
+  }
 
 
-    // Método fechar
-    public function onClose($param)
-    {
-        TScript::create("Template.closeRightPanel()");
+  private function hasRelatedOutbound($id)
+  {
+    try {
+      // Verifique se há saídas relacionadas a este estoque
+      TTransaction::open('sample');
+      $criteria = new TCriteria;
+      $criteria->add(new TFilter('id', '=', $id));
+      $repository = new TRepository('Entrada');
+      $count = $repository->count($criteria);
+      TTransaction::close();
+
+      return $count > 0;
+    } catch (Exception $e) {
+      // Em caso de erro, trate-o de acordo com suas necessidades
+      new TMessage('error', $e->getMessage());
+      return false;
     }
+  }
+
+
+  // Método fechar
+  public function onClose($param)
+  {
+    TScript::create("Template.closeRightPanel()");
+  }
 }
