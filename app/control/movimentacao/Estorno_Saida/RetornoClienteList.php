@@ -83,7 +83,7 @@ class RetornoClienteList extends TPage
     $column_dt_retorno = new TDataGridColumn('data_retorno', 'Data', 'left');
     $column_clie = new TDataGridColumn('cliente->nome', 'Cliente', 'left');
     $column_status = new TDataGridColumn('status', 'Status', 'left');
-    $column_total = new TDataGridColumn('total', 'Total', 'left');
+    $column_total = new TDataGridColumn('valor_total', 'Total', 'left');
 
     $column_dt_retorno->setTransformer(function ($value, $object, $row) {
       // Formate a data para o formato desejado (por exemplo, 'd/m/Y')
@@ -248,7 +248,7 @@ class RetornoClienteList extends TPage
 
       if ($retorno->status == 0) {
         if ($retorno) {
-         // $this->deleteMovement($retorno);
+          $this->deleteMovement($retorno);
           Item_Retorno_Cliente::where('retorno_id', '=', $retorno->id)->delete();
           $retorno->delete();
           new TMessage('info', 'Estorno deletada.', $this->afterSaveAction);
@@ -285,14 +285,14 @@ class RetornoClienteList extends TPage
           $saida->store();
       }
   }
-  private function deleteMovement($saida)
+  private function deleteMovement($retorno)
   {
     //GRAVANDO MOVIMENTAÇÃO
     $mov = new Movimentacoes();
     $usuario_logado = TSession::getValue('userid');
-    $descricao = 'Saida Deletada';
+    $descricao = 'Estorno Deletado';
 
-    $item = Item_Saida::where('saida_id', '=', $saida->id)->first();
+    $item = Item_Retorno_Cliente::where('retorno_id', '=', $retorno->id)->first();
     @$estoque = Estoque::where('produto_id', '=', $item->produto_id)->first();
 
     $mov->data_hora = date('Y-m-d H:i:s');
@@ -300,7 +300,7 @@ class RetornoClienteList extends TPage
     @$mov->produto_id = $estoque->produto_id;
     $mov->responsavel_id = $usuario_logado;
     $mov->saldo_anterior = $estoque->valor_total ?? 0;
-    $mov->quantidade = $item->quantidade ?? 0;
+    $mov->quantidade = $item->quantidade_retorno ?? 0;
     $mov->valor_total = $item->valor_total ?? 0;
 
     $mov->store();
@@ -311,18 +311,17 @@ class RetornoClienteList extends TPage
       TTransaction::open('sample');
       //GRAVANDO MOVIMENTAÇÃO
       $mov = new Movimentacoes();
-      $saida = new Saida($info->saida_id);
-      $estoque = Estoque::where('produto_id', '=', $saida->produto_id)->first();
+      $estoque = Estoque::where('produto_id', '=', $info->produto_id)->first();
 
       $usuario_logado = TSession::getValue('userid');
-      $desc =  'Saida Cancelada.';
+      $desc =  'Estorno Cancelado.';
       $mov->data_hora = date('Y-m-d H:i:s');
       $mov->descricao = $desc;
       $mov->preco_unit = $info->preco_unit;
       $mov->produto_id = $info->produto_id;
       $mov->responsavel_id = $usuario_logado;
       $mov->saldo_anterior = $estoque->valor_total ?? 0;
-      $mov->quantidade = $info->quantidade ?? 0;
+      $mov->quantidade = $info->quantidade_retorno ?? 0;
       $mov->valor_total = $info->valor_total ?? 0;
 
 

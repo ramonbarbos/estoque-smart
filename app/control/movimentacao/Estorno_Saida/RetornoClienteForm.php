@@ -456,6 +456,8 @@ class RetornoClienteForm extends TPage
                         $total += $item->total;
 
                         $this->insertEstoque($item, $item->total, $item->quantidade_retorno);
+                        $this->createMovement($item);
+
                     }
                 }
 
@@ -557,6 +559,7 @@ class RetornoClienteForm extends TPage
         }
 
         TToast::show('info', 'Novo total: <b>' . 'R$ ' . number_format($total, 2, ',', '.') . '</b>', 'bottom right');
+        TToast::show('info', 'Clique no produto para editar.');
     }
 
     private function hasNegativeValues($array)
@@ -577,14 +580,14 @@ class RetornoClienteForm extends TPage
             $mov = new Movimentacoes();
             $saida = new Saida($info->saida_id);
             $usuario_logado = TSession::getValue('userid');
-            $desc =  $saida->tipo->nome . ' - ' . $saida->cliente->nome;
-            $descricao = substr($desc, 0, 30) . '...';
+            $desc =  'Estorno de Baixa';
+            //$descricao = substr($desc, 0, 30) . '...';
             $mov->data_hora = date('Y-m-d H:i:s');
-            $mov->descricao = $descricao;
+            $mov->descricao = $desc;
             $mov->preco_unit = $info->preco_unit;
             $mov->produto_id = $info->produto_id;
             $mov->responsavel_id = $usuario_logado;
-            $mov->quantidade = $info->quantidade;
+            $mov->quantidade = $info->quantidade_retorno;
 
             $estoque = Estoque::where('produto_id', '=', $info->produto_id)->first();
             if ($estoque->valor_total > 0) {
