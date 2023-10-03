@@ -22,6 +22,7 @@ class Produto extends TRecord
         parent::addAttribute('id');
         parent::addAttribute('nome');
         parent::addAttribute('descricao');
+        parent::addAttribute('unidade_id');
 
 
         // Configurar os campos de timestamps
@@ -34,8 +35,10 @@ class Produto extends TRecord
     }
 
 
-
-    // Sobrescreva o método store para definir a data de atualização
+    public function get_unidade()
+    {
+        return Unidades_Medida::find($this->unidade_id);
+    }
     public function store()
     {
         $this->updated_at = date('Y-m-d H:i:s');

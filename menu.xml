@@ -70,6 +70,10 @@
         <action>TPSaidaList</action>
         <icon>fa fa fa-fw fa-fw</icon>
       </menuitem>
+      <menuitem label="Unidades de Medida">
+        <action>UnidadesMedidaList</action>
+        <icon>fa fa fa-fw fa-fw</icon>
+      </menuitem>
     </menu>
   </menuitem>
   <menuitem label="_t{Administration}">

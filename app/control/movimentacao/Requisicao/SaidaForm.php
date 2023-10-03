@@ -83,7 +83,7 @@ class SaidaForm extends TPage
         $detail_id         = new THidden('detail_id');
 
         $criteria_prod = new TCriteria();
-        $criteria_prod->add(new TFilter('quantidade', '>', 0));
+        $criteria_prod->setProperty('order', 'id');
         $produto_id = new TDBUniqueSearch('produto_id', 'sample', 'Estoque', 'produto_id', 'produto_id', null, $criteria_prod);
         $produto_id->setChangeAction(new TAction([$this, 'onProductChange']));
         $produto_id->setMask('{produto->nome} ({quantidade} disponíveis)');

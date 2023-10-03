@@ -17,11 +17,12 @@ use Adianti\Widget\Dialog\TMessage;
 use Adianti\Widget\Form\TEntry;
 use Adianti\Widget\Form\TLabel;
 use Adianti\Widget\Util\TDropDown;
+use Adianti\Widget\Util\TXMLBreadCrumb;
 use Adianti\Widget\Wrapper\TDBCombo;
 use Adianti\Wrapper\BootstrapDatagridWrapper;
 use Adianti\Wrapper\BootstrapFormBuilder;
 
-class ProdutoList extends TPage
+class UnidadesMedidaList extends TPage
 {
   private $form;
   private $datagrid;
@@ -39,21 +40,21 @@ class ProdutoList extends TPage
 
     //Conexão com a tabela
     $this->setDatabase('sample');
-    $this->setActiveRecord('Produto');
+    $this->setActiveRecord('Unidades_Medida');
     $this->setDefaultOrder('id', 'asc');
     $this->setLimit(10);
 
     $this->addFilterField('nome', 'like', 'nome');
 
     //Criação do formulario 
-    $this->form = new BootstrapFormBuilder('form_search_Produto');
-    $this->form->setFormTitle('Produto');
+    $this->form = new BootstrapFormBuilder('form_search_unidade');
+    $this->form->setFormTitle('Unidades de Medida');
 
     //Criação de fields
     $nome = new TEntry('nome');
 
     //Add filds na tela
-    $this->form->addFields([new TLabel('Nome do Produto')], [$nome]);
+    $this->form->addFields([new TLabel('Tipo')], [$nome]);
 
     //Tamanho dos fields
     $nome->setSize('100%');
@@ -63,36 +64,25 @@ class ProdutoList extends TPage
     //Adicionar field de busca
     $btn = $this->form->addAction(_t('Find'), new TAction([$this, 'onSearch']), 'fa:search');
     $btn->class = 'btn btn-sm btn-primary';
-    $this->form->addActionLink(_t('New'), new TAction(['ProdutoForm', 'onEdit'], ['register_state' => 'false']), 'fa:plus green');
+    $this->form->addActionLink(_t('New'), new TAction(['UnidadesMedidaForm', 'onEdit'], ['register_state' => 'false']), 'fa:plus green');
 
     //Criando a data grid
     $this->datagrid = new BootstrapDatagridWrapper(new TDataGrid);
     $this->datagrid->style = 'width: 100%';
 
     //Criando colunas da datagrid
-    $column_id = new TDataGridColumn('id', 'Codigo', 'left',);
+    $column_id = new TDataGridColumn('id', 'Cod.', 'center', '10%');
     $column_nome = new TDataGridColumn('nome', 'Nome', 'left');
-    $column_cadastro = new TDataGridColumn('created_at', 'Cadastro', 'left');
-    $column_uni = new TDataGridColumn('unidade->nome', 'UND', 'left');
-
-    $column_cadastro->setTransformer(function ($value, $object, $row) {
-      return date('d/m/Y', strtotime($value));
-    });
 
     //add coluna da datagrid
     $this->datagrid->addColumn($column_id);
     $this->datagrid->addColumn($column_nome);
-    $this->datagrid->addColumn($column_cadastro);
-    $this->datagrid->addColumn($column_uni);
 
     //Criando ações para o datagrid
     $column_id->setAction(new TAction([$this, 'onReload']), ['order' => 'id']);
     $column_nome->setAction(new TAction([$this, 'onReload']), ['order' => 'nome']);
-    $column_nome->setAction(new TAction([$this, 'onReload']), ['order' => 'descricao']);
-    $column_nome->setAction(new TAction([$this, 'onReload']), ['order' => 'unidade_id']);
 
-
-    $action1 = new TDataGridAction(['ProdutoForm', 'onEdit'], ['id' => '{id}', 'register_state' => 'false']);
+    $action1 = new TDataGridAction(['UnidadesMedidaForm', 'onEdit'], ['id' => '{id}', 'register_state' => 'false']);
     $action2 = new TDataGridAction([$this, 'onDelete'], ['id' => '{id}']);
 
     //Adicionando a ação na tela
@@ -125,6 +115,7 @@ class ProdutoList extends TPage
     //Vertical container
     $container = new TVBox;
     $container->style = 'width: 100%';
+    $container->add(new TXMLBreadCrumb('menu.xml', __CLASS__));
     $container->add($this->form);
     $container->add($panel);
 
@@ -133,19 +124,19 @@ class ProdutoList extends TPage
   public function onDelete($param)
   {
     if (isset($param['key'])) {
-      // Obtém o ID do cliente a ser excluído
       $id = $param['key'];
 
       TTransaction::open('sample');
-      $itemEntrada = Item_Entrada::where('produto_id', '=', $id)->first();
+      $produto = Produto::where('unidade_id', '=', $id)
+        ->first();
+      if ($produto) {
+        $produto_id =  $produto->id;
 
-      if ($itemEntrada) {
-        $retorno_id =  $itemEntrada->id;
-
-        if ($this->hasRelatedOutbound($retorno_id)) {
-          new TMessage('error', 'Não é possível excluir este Produto, pois existem vinculações.');
+        // Verifica se existem saídas relacionadas a este estoque
+        if ($this->hasRelatedOutbound($produto_id)) {
+          new TMessage('error', 'Não é possível excluir este  Unidade de Medida, pois existem vinculações.');
         } else {
-          $object = new Produto($id);
+          $object = new Unidades_Medida($id);
           $object->delete();
 
 
@@ -153,13 +144,14 @@ class ProdutoList extends TPage
           new TMessage('info', 'Registro excluído com sucesso.');
         }
       } else {
-        $object = new Produto($id);
+        $object = new Unidades_Medida($id);
         $object->delete();
+
+
         $this->onReload();
         new TMessage('info', 'Registro excluído com sucesso.');
-
-        TTransaction::close();
       }
+      TTransaction::close();
     }
   }
 
@@ -171,7 +163,7 @@ class ProdutoList extends TPage
       TTransaction::open('sample');
       $criteria = new TCriteria;
       $criteria->add(new TFilter('id', '=', $id));
-      $repository = new TRepository('Entrada');
+      $repository = new TRepository('Produto');
       $count = $repository->count($criteria);
       TTransaction::close();
 

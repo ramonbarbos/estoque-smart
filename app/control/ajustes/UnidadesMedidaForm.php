@@ -24,10 +24,9 @@ use Adianti\Widget\Form\TPassword;
 use Adianti\Widget\Form\TText;
 use Adianti\Widget\Wrapper\TDBCombo;
 use Adianti\Widget\Wrapper\TDBSeekButton;
-use Adianti\Widget\Wrapper\TDBUniqueSearch;
 use Adianti\Wrapper\BootstrapFormBuilder;
 
-class ProdutoForm extends TPage
+class UnidadesMedidaForm extends TPage
 {
   private $form;
 
@@ -38,17 +37,17 @@ class ProdutoForm extends TPage
     parent::__construct();
 
     parent::setTargetContainer('adianti_right_panel');
-    $this->setAfterSaveAction(new TAction(['ProdutoList', 'onReload'], ['register_state' => 'true']));
+    $this->setAfterSaveAction(new TAction(['UnidadesMedidaList', 'onReload'], ['register_state' => 'true']));
 
     $this->setDatabase('sample');
-    $this->setActiveRecord('Produto');
+    $this->setActiveRecord('Unidades_Medida');
 
     // Cria um array com as opções de escolha
 
 
     // Criação do formulário
-    $this->form = new BootstrapFormBuilder('form_Produto');
-    $this->form->setFormTitle('Produto');
+    $this->form = new BootstrapFormBuilder('unidades_medida');
+    $this->form->setFormTitle('Unidade de Medida');
     $this->form->setClientValidation(true);
     $this->form->setColumnClasses(2, ['col-sm-5 col-lg-4', 'col-sm-7 col-lg-8']);
 
@@ -58,22 +57,14 @@ class ProdutoForm extends TPage
     // Criação de fields
     $id = new TEntry('id');
     $nome = new TEntry('nome');
-    $descricao = new TText('descricao');
-    $criteria_unid = new TCriteria();
-    $criteria_unid->setProperty('order', 'id');
-    $unidade_id = new TDBUniqueSearch('unidade_id', 'sample', 'Unidades_Medida', 'id', 'id', null, $criteria_unid);
-    $unidade_id->setMask('{id} - {nome}');
 
     // Adicione fields ao formulário
     $this->form->addFields([new TLabel('Id')], [$id]);
     $this->form->addFields([new TLabel('Nome')], [$nome]);
-    $this->form->addFields([new TLabel('Descrição')], [$descricao]);
-    $this->form->addFields([new TLabel('Unidade')], [$unidade_id]);
 
 
     // Validação do campo Nome
     $nome->addValidation('Nome', new TRequiredValidator);
-    $unidade_id->addValidation('Unidade', new TRequiredValidator);
 
     // Tornar o campo ID não editável
     $id->setEditable(false);
@@ -81,10 +72,6 @@ class ProdutoForm extends TPage
     // Tamanho dos campos
     $id->setSize('100%');
     $nome->setSize('100%');
-    $descricao->setSize('100%');
-    $unidade_id->setSize('100%');
-    $unidade_id->setMinLength(0);
-
 
     // Adicionar botão de salvar
     $btn = $this->form->addAction(_t('Save'), new TAction([$this, 'onSave']), 'fa:plus green');
@@ -111,29 +98,24 @@ class ProdutoForm extends TPage
       $id = $param['key'];
 
       TTransaction::open('sample');
-      $itemEntrada = Item_Entrada::where('produto_id', '=', $id)->first();
+      $produto = Produto::where('unidade_id', '=', $id)
+        ->first();
+      if ($produto) {
+        $produto_id =  $produto->id;
 
-      if ($itemEntrada) {
-        $retorno_id =  $itemEntrada->id;
-
-        // Verifica se existem saídas relacionadas a este estoque
-        if ($this->hasRelatedOutbound($retorno_id)) {
-          $entrada = new Produto($id);
-          $this->form->setData($entrada);
+        if ($this->hasRelatedOutbound($produto_id)) {
+          $unidade = new Unidades_Medida($id);
+          $this->form->setData($unidade);
           $this->form->getField('id')->setEditable(false);
           $this->form->getField('nome')->setEditable(false);
-          $this->form->getField('descricao')->setEditable(false);
-          $this->form->getField('unidade_id')->setEditable(false);
-          $alert = new TAlert('warning', 'Não é possível editar este produto, pois já existem vinculações.');
+          $alert = new TAlert('warning', 'Não é possível editar este unidade de medida, pois já existem vinculações.');
           $alert->show();
         } else {
-
-
-          $object = new Produto($id);
+          $object = new Unidades_Medida($id);
           $this->form->setData($object);
         }
       } else {
-        $object = new Produto($id);
+        $object = new Unidades_Medida($id);
         $this->form->setData($object);
       }
       TTransaction::close();
@@ -148,7 +130,7 @@ class ProdutoForm extends TPage
       TTransaction::open('sample');
       $criteria = new TCriteria;
       $criteria->add(new TFilter('id', '=', $id));
-      $repository = new TRepository('Entrada');
+      $repository = new TRepository('Produto');
       $count = $repository->count($criteria);
       TTransaction::close();
 
