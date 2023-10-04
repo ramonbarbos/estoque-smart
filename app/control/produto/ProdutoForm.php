@@ -19,8 +19,10 @@ use Adianti\Widget\Form\TDate;
 use Adianti\Widget\Form\TDateTime;
 use Adianti\Widget\Form\TEntry;
 use Adianti\Widget\Form\TFieldList;
+use Adianti\Widget\Form\TForm;
 use Adianti\Widget\Form\TLabel;
 use Adianti\Widget\Form\TPassword;
+use Adianti\Widget\Form\TSpinner;
 use Adianti\Widget\Form\TText;
 use Adianti\Widget\Wrapper\TDBCombo;
 use Adianti\Widget\Wrapper\TDBSeekButton;
@@ -50,7 +52,7 @@ class ProdutoForm extends TPage
     $this->form = new BootstrapFormBuilder('form_Produto');
     $this->form->setFormTitle('Produto');
     $this->form->setClientValidation(true);
-    $this->form->setColumnClasses(2, ['col-sm-5 col-lg-4', 'col-sm-7 col-lg-8']);
+    // $this->form->setColumnClasses(2, ['col-sm-5 col-lg-4', 'col-sm-7 col-lg-8']);
 
 
 
@@ -62,29 +64,47 @@ class ProdutoForm extends TPage
     $criteria_unid = new TCriteria();
     $criteria_unid->setProperty('order', 'id');
     $unidade_id = new TDBUniqueSearch('unidade_id', 'sample', 'Unidades_Medida', 'id', 'id', null, $criteria_unid);
-    $unidade_id->setMask('{id} - {nome}');
-
-    // Adicione fields ao formulário
-    $this->form->addFields([new TLabel('Id')], [$id]);
-    $this->form->addFields([new TLabel('Nome')], [$nome]);
-    $this->form->addFields([new TLabel('Descrição')], [$descricao]);
-    $this->form->addFields([new TLabel('Unidade')], [$unidade_id]);
-
+    $unidade_id->setChangeAction(new TAction([$this, 'onProductChange']));
+    $unidade_id->setMask('{nome} - {sigla}');
+    $valor_atual =  new TEntry('preco_unit');
+    //-------------------------------------------------------------------
+    $unidade_saida = new TDBUniqueSearch('unidade_saida', 'sample', 'Unidades_Medida', 'id', 'id', null, $criteria_unid);
+    $unidade_saida->setMask('{nome} - {sigla}');
+    $quantidade_correspondente     = new TSpinner('qt_correspondente');
 
     // Validação do campo Nome
     $nome->addValidation('Nome', new TRequiredValidator);
     $unidade_id->addValidation('Unidade', new TRequiredValidator);
-
-    // Tornar o campo ID não editável
     $id->setEditable(false);
-
-    // Tamanho dos campos
-    $id->setSize('100%');
+    $id->setSize('37%');
     $nome->setSize('100%');
     $descricao->setSize('100%');
+    $valor_atual->setSize('37%');
+    $valor_atual->setEditable(false);
     $unidade_id->setSize('100%');
     $unidade_id->setMinLength(0);
+    $valor_atual->setNumericMask(2, '.', '', true);
+    $unidade_saida->setSize('10%');
+    $unidade_saida->setMinLength(0);
 
+
+    // Adicione fields ao formulário
+    $this->form->addFields([new TLabel('Codigo')], [$id]);
+    $this->form->addFields([new TLabel('Nome (*)', '#FF0000')], [$nome], [new TLabel('UND (*)', '#FF0000')], [$unidade_id]);
+    $this->form->addFields([new TLabel('Descrição (*)', '#FF0000')], [$descricao]);
+    $this->form->addFields([new TLabel('Valor Atual')], [$valor_atual]);
+
+
+    // fildes 1 tab
+    $subform = new BootstrapFormBuilder;
+    $subform->setFieldSizes('100%');
+    $subform->setProperty('style', 'border:none');
+
+    $subform->appendPage('Unidade de Saida');
+    $subform->addFields([new TLabel('Unidade')], [$unidade_saida], [new TLabel('Qtd. Corresp')], [$quantidade_correspondente]);
+    $subform->layout = ['col-sm-2', 'col-sm-6', 'col-sm-4'];
+
+    $this->form->addContent([$subform]);
 
     // Adicionar botão de salvar
     $btn = $this->form->addAction(_t('Save'), new TAction([$this, 'onSave']), 'fa:plus green');
@@ -103,7 +123,20 @@ class ProdutoForm extends TPage
 
     parent::add($container);
   }
-
+  public static function onProductChange($params)
+  {
+    if (!empty($params['unidade_id'])) {
+      try {
+        $unidade_id = $params['unidade_id'];
+        TTransaction::open('sample');
+        TForm::sendData('form_Produto', (object) ['unidade_saida' => $unidade_id]);
+        TTransaction::close();
+      } catch (Exception $e) {
+        new TMessage('error', $e->getMessage());
+        TTransaction::rollback();
+      }
+    }
+  }
   public function onEdit($param)
   {
     if (isset($param['key'])) {
@@ -126,15 +159,33 @@ class ProdutoForm extends TPage
           $this->form->getField('unidade_id')->setEditable(false);
           $alert = new TAlert('warning', 'Não é possível editar este produto, pois já existem vinculações.');
           $alert->show();
+          $estoque = Estoque::where('produto_id', '=', $id)->first();
+          $valor_atual = 0;
+          if (isset($estoque->preco_unit)) {
+            $valor_atual = $estoque->preco_unit;
+          }
+          TForm::sendData('form_Produto', (object) ['preco_unit' => $valor_atual]);
         } else {
 
-
+          $estoque = Estoque::where('produto_id', '=', $id)->first();
+          $valor_atual = 0;
+          if (isset($estoque->preco_unit)) {
+            $valor_atual = $estoque->preco_unit;
+          }
           $object = new Produto($id);
           $this->form->setData($object);
+          TForm::sendData('form_Produto', (object) ['preco_unit' => $valor_atual]);
         }
       } else {
+        $estoque = Estoque::where('produto_id', '=', $id)->first();
+        $valor_atual = 0;
+        if (isset($estoque->preco_unit)) {
+
+          $valor_atual = $estoque->preco_unit;
+        }
         $object = new Produto($id);
         $this->form->setData($object);
+        TForm::sendData('form_Produto', (object) ['preco_unit' => $valor_atual]);
       }
       TTransaction::close();
     }

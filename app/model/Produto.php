@@ -23,6 +23,8 @@ class Produto extends TRecord
         parent::addAttribute('nome');
         parent::addAttribute('descricao');
         parent::addAttribute('unidade_id');
+        parent::addAttribute('unidade_saida');
+        parent::addAttribute('qt_correspondente');
 
 
         // Configurar os campos de timestamps

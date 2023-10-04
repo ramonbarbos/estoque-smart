@@ -73,7 +73,7 @@ class ProdutoList extends TPage
     $column_id = new TDataGridColumn('id', 'Codigo', 'left',);
     $column_nome = new TDataGridColumn('nome', 'Nome', 'left');
     $column_cadastro = new TDataGridColumn('created_at', 'Cadastro', 'left');
-    $column_uni = new TDataGridColumn('unidade->nome', 'UND', 'left');
+    $column_uni = new TDataGridColumn('unidade->sigla', 'UND', 'left');
 
     $column_cadastro->setTransformer(function ($value, $object, $row) {
       return date('d/m/Y', strtotime($value));

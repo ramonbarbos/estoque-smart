@@ -20,6 +20,7 @@ class Unidades_Medida extends TRecord
     {
         parent::__construct($id, $callObjectLoad);
         parent::addAttribute('nome');
+        parent::addAttribute('sigla');
        
     }
 

@@ -42,9 +42,10 @@ class UnidadesMedidaList extends TPage
     $this->setDatabase('sample');
     $this->setActiveRecord('Unidades_Medida');
     $this->setDefaultOrder('id', 'asc');
-    $this->setLimit(10);
+    $this->setLimit(5);
 
     $this->addFilterField('nome', 'like', 'nome');
+    $this->addFilterField('sigla', 'like', 'sigla');
 
     //Criação do formulario 
     $this->form = new BootstrapFormBuilder('form_search_unidade');
@@ -52,12 +53,15 @@ class UnidadesMedidaList extends TPage
 
     //Criação de fields
     $nome = new TEntry('nome');
+    $sigla = new TEntry('sigla');
 
     //Add filds na tela
-    $this->form->addFields([new TLabel('Tipo')], [$nome]);
+    $this->form->addFields([new TLabel('Unidade')], [$nome]);
+    $this->form->addFields([new TLabel('Sigla')], [$sigla]);
 
     //Tamanho dos fields
     $nome->setSize('100%');
+    $sigla->setSize('100%');
 
     $this->form->setData(TSession::getValue(__CLASS__ . '_filter_data'));
 
@@ -73,10 +77,12 @@ class UnidadesMedidaList extends TPage
     //Criando colunas da datagrid
     $column_id = new TDataGridColumn('id', 'Cod.', 'center', '10%');
     $column_nome = new TDataGridColumn('nome', 'Nome', 'left');
+    $column_sigla = new TDataGridColumn('sigla', 'Sigla', 'left');
 
     //add coluna da datagrid
     $this->datagrid->addColumn($column_id);
     $this->datagrid->addColumn($column_nome);
+    $this->datagrid->addColumn($column_sigla);
 
     //Criando ações para o datagrid
     $column_id->setAction(new TAction([$this, 'onReload']), ['order' => 'id']);
