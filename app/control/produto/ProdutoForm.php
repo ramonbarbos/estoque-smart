@@ -123,6 +123,60 @@ class ProdutoForm extends TPage
 
     parent::add($container);
   }
+  public function onSave($param)
+  {
+    try {
+      TTransaction::open('sample');
+
+      $data = $this->form->getData();
+      $this->form->validate();
+
+
+
+      $produto = new Produto;
+      $produto->fromArray((array) $data);
+      if($this->validaUnidade($produto)){
+        new TMessage('info', 'Produto Salvo', $this->afterSaveAction);
+
+      }else{
+        new TMessage('error','Conversão não é possível.' );
+      }
+     
+
+      //$produto->store();
+
+
+      TTransaction::close();
+    } catch (Exception $e) {
+      new TMessage('error', $e->getMessage());
+      $this->form->setData($this->form->getData());
+      TTransaction::rollback();
+    }
+  }
+  public function validaUnidade($param)
+  {
+    try {
+      if ($param->unidade_id == $param->unidade_saida) {
+        return true;
+      } else if ($param->unidade_id != $param->unidade_saida) {
+
+        $fatorConversao = Fator_Convesao::where('unidade_origem', '=', $param->unidade_id)
+          ->where('unidade_destino', '=', $param->unidade_saida)
+          ->first();
+          
+          if ($fatorConversao) {
+            //  encontrado
+            return true;
+        } else {
+            // não encontrado
+            return false;
+        }
+      }
+    } catch (Exception $e) {
+      new TMessage('error', $e->getMessage());
+      $this->form->setData($this->form->getData());
+    }
+  }
   public static function onProductChange($params)
   {
     if (!empty($params['unidade_id'])) {
@@ -157,6 +211,9 @@ class ProdutoForm extends TPage
           $this->form->getField('nome')->setEditable(false);
           $this->form->getField('descricao')->setEditable(false);
           $this->form->getField('unidade_id')->setEditable(false);
+          $this->form->getField('unidade_id')->setEditable(false);
+          $this->form->getField('unidade_saida')->setEditable(false);
+          $this->form->getField('qt_correspondente')->setEditable(false);
           $alert = new TAlert('warning', 'Não é possível editar este produto, pois já existem vinculações.');
           $alert->show();
           $estoque = Estoque::where('produto_id', '=', $id)->first();

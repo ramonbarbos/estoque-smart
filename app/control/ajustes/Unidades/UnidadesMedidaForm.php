@@ -57,14 +57,17 @@ class UnidadesMedidaForm extends TPage
     // Criação de fields
     $id = new TEntry('id');
     $nome = new TEntry('nome');
+    $sigla = new TEntry('sigla');
 
     // Adicione fields ao formulário
     $this->form->addFields([new TLabel('Id')], [$id]);
     $this->form->addFields([new TLabel('Nome')], [$nome]);
+    $this->form->addFields([new TLabel('Sigla')], [$sigla]);
 
 
     // Validação do campo Nome
     $nome->addValidation('Nome', new TRequiredValidator);
+    $sigla->addValidation('Sigla', new TRequiredValidator);
 
     // Tornar o campo ID não editável
     $id->setEditable(false);
