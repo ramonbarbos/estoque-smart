@@ -42,7 +42,7 @@ class EstoqueList extends TPage
         $column_nf = new DatagridTDataGridColumn('nota_fiscal', 'Nota Fiscal', 'left');
         $column_produto = new DatagridTDataGridColumn('produto->nome', 'Produto', 'left');
         $column_produto_nome = new DatagridTDataGridColumn('produto->descricao', 'Descricao', 'left');
-        $column_produto_nome = new DatagridTDataGridColumn('produto->unidade->sigla', 'Unid.', 'left');
+        $column_produto_nome = new DatagridTDataGridColumn('produto->unidadeDes->sigla', 'Unid.', 'left');
         $column_qtd = new DatagridTDataGridColumn('quantidade', 'Quantidade', 'left');
         $column_preco = new DatagridTDataGridColumn('preco_unit', 'Valor unidade', 'left');
         $column_total = new DatagridTDataGridColumn('valor_total', 'Total', 'left');

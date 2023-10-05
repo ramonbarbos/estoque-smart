@@ -82,7 +82,7 @@ class EntradaForm extends TPage
         $produto_id = new TDBUniqueSearch('produto_id', 'sample', 'Produto', 'id', 'id');
         $produto_id->setMask('{nome} - {descricao}');
         $preco_unit      = new TEntry('preco_unit');
-        $quantidade     = new TSpinner('quantidade');
+        $quantidade     = new TEntry('quantidade');
 
 
         // Validação do campo 
@@ -106,7 +106,7 @@ class EntradaForm extends TPage
         $dt_nf->setSize('50%');
         $dt_nf->setMask('dd/mm/yyyy');
         $dt_nf->setDatabaseMask('yyyy-mm-dd');
-        $quantidade->setRange(0, 1000, 1);
+        $quantidade->setNumericMask(2, '.', '', true);
         $preco_unit->setNumericMask(2, '.', '', true);
         // fildes 
         $this->form->addFields([new TLabel('Codigo')], [$id], [new TLabel('Entrega (*)', '#FF0000')], [$data],);
@@ -389,7 +389,7 @@ class EntradaForm extends TPage
                 $entrada->store();
 
                 TForm::sendData('form_entrada', (object) ['id' => $entrada->id]);
-                new TMessage('info', 'Registos Salvos',); //$this->afterSaveAction
+                new TMessage('info', 'Registos Salvos',$this->afterSaveAction); //$this->afterSaveAction
             }
 
             TTransaction::close();

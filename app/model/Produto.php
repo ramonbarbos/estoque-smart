@@ -41,6 +41,10 @@ class Produto extends TRecord
     {
         return Unidades_Medida::find($this->unidade_id);
     }
+    public function get_unidadeDes()
+    {
+        return Unidades_Medida::find($this->unidade_saida);
+    }
     public function store()
     {
         $this->updated_at = date('Y-m-d H:i:s');
