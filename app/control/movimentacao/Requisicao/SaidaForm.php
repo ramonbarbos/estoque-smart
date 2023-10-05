@@ -88,7 +88,7 @@ class SaidaForm extends TPage
         $produto_id->setChangeAction(new TAction([$this, 'onProductChange']));
         $produto_id->setMask('{produto->nome} ({quantidade} disponíveis)');
         $preco_unit      = new TEntry('preco_unit');
-        $quantidade     = new TSpinner('quantidade');
+        $quantidade     = new TEntry('quantidade');
 
 
         // Validação do campo 
@@ -107,7 +107,7 @@ class SaidaForm extends TPage
         $produto_id->setMinLength(0);
         $data->setMask('dd/mm/yyyy');
         $data->setDatabaseMask('yyyy-mm-dd');
-        $quantidade->setRange(0, 1000, 1);
+        $quantidade->setNumericMask(2, '.', '', true);
         $preco_unit->setNumericMask(2, '.', '', true);
         $preco_unit->setEditable(false);
 
@@ -161,7 +161,7 @@ class SaidaForm extends TPage
             return Produto::findInTransaction('sample', $value)->descricao;
         });
 
-        $col_subt->enableTotal('sum', 'R$', 2, ',', '.');
+        $col_subt->enableTotal('sum', 'R$', 4, ',', '.');
 
         $col_id->setVisibility(false);
         $col_uniq->setVisibility(false);
@@ -187,7 +187,7 @@ class SaidaForm extends TPage
 
         $format_value = function ($value) {
             if (is_numeric($value)) {
-                return 'R$ ' . number_format($value, 2, ',', '.');
+                return 'R$ ' . number_format($value, 4, ',', '.');
             }
             return $value;
         };

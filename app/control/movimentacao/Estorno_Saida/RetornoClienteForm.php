@@ -96,7 +96,7 @@ class RetornoClienteForm extends TPage
         //  $produto_id->setMask('{produto->nome}');
         $preco_unit      = new TEntry('preco_unit');
         $quantidade     = new THidden('quantidade');
-        $quantidade_retorno     = new TSpinner('quantidade_retorno');
+        $quantidade_retorno     = new TEntry('quantidade_retorno');
 
 
         // Validação do campo 
@@ -127,7 +127,7 @@ class RetornoClienteForm extends TPage
         $data->setEditable(false);
         $dt_retorno->setMask('dd/mm/yyyy');
         $dt_retorno->setDatabaseMask('yyyy-mm-dd');
-        $quantidade_retorno->setRange(0, 100, 0.1);
+        $quantidade_retorno->setNumericMask(2, '.', '', true);
         $preco_unit->setNumericMask(2, '.', '', true);
         $preco_unit->setEditable(false);
 
@@ -213,7 +213,7 @@ class RetornoClienteForm extends TPage
 
         $format_value = function ($value) {
             if (is_numeric($value)) {
-                return 'R$ ' . number_format($value, 2, ',', '.');
+                return 'R$ ' . number_format($value, 4, ',', '.');
             }
             return $value;
         };

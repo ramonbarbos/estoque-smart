@@ -195,22 +195,15 @@ class ProdutoForm extends TPage
   }
   public function correspondente($param)
   {
-    try {
-
-      $fatorConversao = Fator_Convesao::where('unidade_origem', '=', $param->unidade_id)
-      ->where('unidade_destino', '=', $param->unidade_saida)
-      ->first();
-
+   
+     
       if ($param->unidade_id == $param->unidade_saida) {
         return true;
       } else if ($param->unidade_id != $param->unidade_saida) {
 
           return false;
       }
-    } catch (Exception $e) {
-      new TMessage('error', $e->getMessage());
-      $this->form->setData($this->form->getData());
-    }
+  
   }
   public static function onProductChange($params)
   {
