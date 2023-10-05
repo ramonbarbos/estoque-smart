@@ -19,7 +19,6 @@ class Estoque extends TRecord
         parent::addAttribute('fornecedor_id');
         parent::addAttribute('cliente_id');
         parent::addAttribute('quantidade');
-        parent::addAttribute('quant_retirada');
         parent::addAttribute('nota_fiscal');
         parent::addAttribute('preco_unit');
         parent::addAttribute('valor_total');

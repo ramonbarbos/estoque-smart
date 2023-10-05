@@ -209,10 +209,12 @@ class EntradaList extends TPage
             TTransaction::open('sample');
 
             $itens = Item_Entrada::where('entrada_id', '=', $entrada->id)->load();
+           
 
             foreach ($itens as $item) {
+                $quantidade_estoque      = $this->calcularQuant($item,$entrada );
                 $produto_id = $item->produto_id;
-                $quantidade = $item->quantidade;
+                $quantidade = $quantidade_estoque;
                 $totalValor = $item->total;
 
                 $estoque = Estoque::where('produto_id', '=', $produto_id)->first();
@@ -245,6 +247,26 @@ class EntradaList extends TPage
             throw new Exception("Erro ao atualizar o estoque: " . $e->getMessage());
         }
     }
+  
+private function calcularQuant($item, $entrada_id)
+{
+    $produto = new Produto($item->produto_id);
+
+    $fatorConversao = Fator_Convesao::where('unidade_origem', '=', $produto->unidade_id)
+        ->where('unidade_destino', '=', $produto->unidade_saida)
+        ->first();
+
+    if (!$fatorConversao) {
+         $entrada = new Entrada($entrada_id);
+         $entrada->delete();
+        throw new Exception('As unidades de medida não são compatíveis ou não há um fator de conversão definido.');
+    }
+
+    // Ajusta a quantidade para a unidade de saída usando o fator de conversão
+    $quantidadeSaida = $item->quantidade * $produto->qt_correspondente;
+
+    return $quantidadeSaida;
+}
     public function onDelete($param)
     {
         try {

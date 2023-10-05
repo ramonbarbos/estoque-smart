@@ -61,19 +61,19 @@ class FatorConvesaoForm extends TPage
     $unidade_destino = new TDBUniqueSearch('unidade_destino', 'sample', 'Unidades_Medida', 'id', 'id');
     $unidade_destino->setMask('{nome} - {sigla}');
 
-    $fator = new TEntry('fator');
+    //$fator = new TEntry('fator');
 
     // Adicione fields ao formulário
     $this->form->addFields([new TLabel('Codigo')], [$id]);
     $this->form->addFields([new TLabel('Origem')], [$unidade_origem]);
     $this->form->addFields([new TLabel('Destino')], [$unidade_destino]);
-    $this->form->addFields([new TLabel('Fator')], [$fator]);
+   // $this->form->addFields([new TLabel('Fator')], [$fator]);
 
 
     // Validação do campo Nome
     $unidade_origem->addValidation('Origem', new TRequiredValidator);
     $unidade_destino->addValidation('Destino', new TRequiredValidator);
-    $fator->addValidation('Fator', new TRequiredValidator);
+   // $fator->addValidation('Fator', new TRequiredValidator);
 
     // Tornar o campo ID não editável
     $id->setEditable(false);

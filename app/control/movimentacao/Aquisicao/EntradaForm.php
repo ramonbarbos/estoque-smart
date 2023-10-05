@@ -102,11 +102,11 @@ class EntradaForm extends TPage
         $produto_id->setMinLength(0);
         $data->setMask('dd/mm/yyyy');
         $data->setDatabaseMask('yyyy-mm-dd');
-       // $nf->setNumericMask(2, '', '', true);
+        // $nf->setNumericMask(2, '', '', true);
         $dt_nf->setSize('50%');
         $dt_nf->setMask('dd/mm/yyyy');
         $dt_nf->setDatabaseMask('yyyy-mm-dd');
-        $quantidade->setRange(0,1000,1);
+        $quantidade->setRange(0, 1000, 1);
         $preco_unit->setNumericMask(2, '.', '', true);
         // fildes 
         $this->form->addFields([new TLabel('Codigo')], [$id], [new TLabel('Entrega (*)', '#FF0000')], [$data],);
@@ -335,6 +335,19 @@ class EntradaForm extends TPage
             $data = $this->form->getData();
             $this->form->validate();
 
+            // Antes de criar a entrada, verifique o fator de conversão
+            foreach ($param['products_list_produto_id'] as $key => $item_id) {
+                $produto = new Produto($item_id);
+
+                $fatorConversao = Fator_Convesao::where('unidade_origem', '=', $produto->unidade_id)
+                    ->where('unidade_destino', '=', $produto->unidade_saida)
+                    ->first();
+
+                if (!$fatorConversao) {
+                    TTransaction::rollback(); // Anula a transação
+                    throw new Exception('As unidades de medida não são compatíveis ou não há um fator de conversão definido.');
+                }
+            }
             $entrada = new Entrada;
             $entrada->fromArray((array) $data);
 
@@ -349,9 +362,9 @@ class EntradaForm extends TPage
                 Item_Entrada::where('entrada_id', '=', $entrada->id)->delete();
 
                 $total = 0;
-           
+
                 if (!empty($param['products_list_produto_id'])) {
-                   
+
                     foreach ($param['products_list_produto_id'] as $key => $item_id) {
                         $item = new Item_Entrada;
                         $item->produto_id  = $item_id;
@@ -359,10 +372,14 @@ class EntradaForm extends TPage
                         $item->quantidade      = (float) $param['products_list_quantidade'][$key];
                         $item->total       =  $item->preco_unit * $item->quantidade;
 
+
+                        $preco_unit_estoque = $this->calcularValorUnit($item, $entrada);
+                        $quantidade_estoque      = $this->calcularQuant($item, $entrada);
+
                         $item->entrada_id = $entrada->id;
                         $item->store();
                         $total += $item->total;
-                        $this->insertEstoque($item, $item->total, $item->quantidade);
+                        $this->insertEstoque($item, $item->total, $quantidade_estoque, $preco_unit_estoque);
                         $this->createMovement($item);
                     }
                 }
@@ -372,19 +389,62 @@ class EntradaForm extends TPage
                 $entrada->store();
 
                 TForm::sendData('form_entrada', (object) ['id' => $entrada->id]);
-                new TMessage('info', 'Registos Salvos', $this->afterSaveAction);
+                new TMessage('info', 'Registos Salvos',); //$this->afterSaveAction
             }
 
-            TTransaction::close(); 
-        } catch (Exception $e) 
-        {
+            TTransaction::close();
+        } catch (Exception $e) {
             new TMessage('error', $e->getMessage());
-            $this->form->setData($this->form->getData()); 
+            $this->form->setData($this->form->getData());
             TTransaction::rollback();
         }
     }
 
-    private function insertEstoque($item, $total, $quantidade)
+    private function calcularValorUnit($item, $entrada_id)
+    {
+        try {
+            $produto = new Produto($item->produto_id);
+
+            $fatorConversao = Fator_Convesao::where('unidade_origem', '=', $produto->unidade_id)
+                ->where('unidade_destino', '=', $produto->unidade_saida)
+                ->first();
+
+            if (!$fatorConversao) {
+                $entrada = new Entrada($entrada_id);
+                $entrada->delete();
+                throw new Exception('As unidades de medida não são compatíveis ou não há um fator de conversão definido.');
+            }
+
+            $preco_unit = $item->preco_unit / $produto->qt_correspondente;
+            return $preco_unit;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+    private function calcularQuant($item, $entrada_id)
+    {
+        try {
+            $produto = new Produto($item->produto_id);
+
+            $fatorConversao = Fator_Convesao::where('unidade_origem', '=', $produto->unidade_id)
+                ->where('unidade_destino', '=', $produto->unidade_saida)
+                ->first();
+
+            if (!$fatorConversao) {
+                $entrada = new Entrada($entrada_id);
+                $entrada->delete();
+                throw new Exception('As unidades de medida não são compatíveis ou não há um fator de conversão definido.');
+            }
+
+            $quantidadeSaida = $item->quantidade * $produto->qt_correspondente;
+
+            return $quantidadeSaida;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    private function insertEstoque($item, $total, $quantidade, $preco_unit)
     {
         try {
             TTransaction::open('sample');
@@ -397,7 +457,7 @@ class EntradaForm extends TPage
             if ($estoque) {
                 $mediaPonderadaEstoque = ($estoque->valor_total + $total) / ($estoque->quantidade + $quantidade);
             } else {
-                $mediaPonderadaEstoque = $item->preco_unit;
+                $mediaPonderadaEstoque = $preco_unit;
             }
 
             // Atualizar ou inserir o registro de estoque
@@ -415,7 +475,7 @@ class EntradaForm extends TPage
                 $estoque->produto_id = $item->produto_id;
                 $estoque->quantidade = $quantidade;
                 $estoque->preco_unit = $mediaPonderadaEstoque;
-                $estoque->valor_total = $quantidade * $mediaPonderadaEstoque;
+                $estoque->valor_total = $item->quantidade * $item->preco_unit;
             }
 
             $estoque->store();
@@ -428,7 +488,7 @@ class EntradaForm extends TPage
     }
     public static function onMutationAction($param)
     {
-  
+
         $total = 0;
 
         if ($param['list_data']) {
@@ -458,8 +518,8 @@ class EntradaForm extends TPage
             $mov = new Movimentacoes();
             $entrada = new Entrada($info->entrada_id);
             $usuario_logado = TSession::getValue('userid');
-            $desc =  $entrada->tipo->nome.' - ' .$entrada->fornecedor->nome;
-            $descricao = substr($desc, 0, 30) . '...'; 
+            $desc =  $entrada->tipo->nome . ' - ' . $entrada->fornecedor->nome;
+            $descricao = substr($desc, 0, 30) . '...';
             $mov->data_hora = date('Y-m-d H:i:s');
             $mov->descricao = $descricao;
             $mov->preco_unit = $info->preco_unit;

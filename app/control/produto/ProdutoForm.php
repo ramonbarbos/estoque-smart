@@ -135,15 +135,29 @@ class ProdutoForm extends TPage
 
       $produto = new Produto;
       $produto->fromArray((array) $data);
-      if($this->validaUnidade($produto)){
-        new TMessage('info', 'Produto Salvo', $this->afterSaveAction);
+      if ($this->validaUnidade($produto)) {
 
-      }else{
-        new TMessage('error','Conversão não é possível.' );
+       
+        if($this->correspondente($produto)){
+          $produto->qt_correspondente = 1;
+          new TMessage('info', 'Produto Salvo', $this->afterSaveAction);
+          $produto->store();
+        }else if(!$this->correspondente($produto)){
+          if(empty($produto->qt_correspondente)){
+            throw new Exception('É necessario informar a quantidade correspondente.');
+          }
+          new TMessage('info', 'Produto Salvo', $this->afterSaveAction);
+          $produto->store();
+        
+        }
+
+    
+
+      } else {
+        new TMessage('error', 'Conversão não é possível.');
       }
-     
 
-      //$produto->store();
+
 
 
       TTransaction::close();
@@ -163,14 +177,35 @@ class ProdutoForm extends TPage
         $fatorConversao = Fator_Convesao::where('unidade_origem', '=', $param->unidade_id)
           ->where('unidade_destino', '=', $param->unidade_saida)
           ->first();
-          
-          if ($fatorConversao) {
-            //  encontrado
-            return true;
+
+        if ($fatorConversao) {
+          //  encontrado
+          return true;
         } else {
-            // não encontrado
-            return false;
+          // não encontrado
+          return false;
         }
+      
+      }
+
+    } catch (Exception $e) {
+      new TMessage('error', $e->getMessage());
+      $this->form->setData($this->form->getData());
+    }
+  }
+  public function correspondente($param)
+  {
+    try {
+
+      $fatorConversao = Fator_Convesao::where('unidade_origem', '=', $param->unidade_id)
+      ->where('unidade_destino', '=', $param->unidade_saida)
+      ->first();
+
+      if ($param->unidade_id == $param->unidade_saida) {
+        return true;
+      } else if ($param->unidade_id != $param->unidade_saida) {
+
+          return false;
       }
     } catch (Exception $e) {
       new TMessage('error', $e->getMessage());

@@ -79,19 +79,19 @@ class FatorConvesaoList extends TPage
     $column_id = new TDataGridColumn('id', 'Cod.', 'center', '10%');
     $column_origem = new TDataGridColumn('unidadeOri->nome', 'Origem', 'left');
     $column_destino = new TDataGridColumn('unidadeDes->nome', 'Destino', 'left');
-    $column_fator = new TDataGridColumn('fator', 'Fator', 'left');
+   // $column_fator = new TDataGridColumn('fator', 'Fator', 'left');
 
     //add coluna da datagrid
     $this->datagrid->addColumn($column_id);
     $this->datagrid->addColumn($column_origem);
     $this->datagrid->addColumn($column_destino);
-    $this->datagrid->addColumn($column_fator);
+   // $this->datagrid->addColumn($column_fator);
 
     //Criando ações para o datagrid
     $column_id->setAction(new TAction([$this, 'onReload']), ['order' => 'id']);
     $column_origem->setAction(new TAction([$this, 'onReload']), ['order' => 'unidade_origem']);
     $column_destino->setAction(new TAction([$this, 'onReload']), ['order' => 'unidade_destino']);
-    $column_fator->setAction(new TAction([$this, 'onReload']), ['order' => 'fator']);
+    //$column_fator->setAction(new TAction([$this, 'onReload']), ['order' => 'fator']);
 
     $action1 = new TDataGridAction(['FatorConvesaoForm', 'onEdit'], ['id' => '{id}', 'register_state' => 'false']);
     $action2 = new TDataGridAction([$this, 'onDelete'], ['id' => '{id}']);
