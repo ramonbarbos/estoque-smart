@@ -231,7 +231,7 @@ class SaidaList extends TPage
           }
 
           $estoque->store();
-          $this->cancelMovement($item);
+          $this->cancelMovement($item, $estoque);
 
         }
       }
@@ -264,6 +264,46 @@ class SaidaList extends TPage
       }
     }
   }
+  private function calcularQuant($item, $saida_id)
+    {
+        $produto = new Produto($item->produto_id);
+
+        $fatorConversao = Fator_Convesao::where('unidade_origem', '=', $produto->unidade_id)
+            ->where('unidade_destino', '=', $produto->unidade_saida)
+            ->first();
+
+        if (!$fatorConversao) {
+            $saida = new Saida($saida_id);
+            $saida->delete();
+            throw new Exception('As unidades de medida não são compatíveis ou não há um fator de conversão definido.');
+        }
+
+        // Ajusta a quantidade para a unidade de saída usando o fator de conversão
+        $quantidadeSaida = $item->quantidade * $produto->qt_correspondente;
+
+        return $quantidadeSaida;
+    }
+    private function calcularValorUnit($item, $saida_id)
+    {
+        try {
+            $produto = new Produto($item->produto_id);
+
+            $fatorConversao = Fator_Convesao::where('unidade_origem', '=', $produto->unidade_id)
+                ->where('unidade_destino', '=', $produto->unidade_saida)
+                ->first();
+
+            if (!$fatorConversao) {
+                $saida = new Saida($saida_id);
+                $saida->delete();
+                throw new Exception('As unidades de medida não são compatíveis ou não há um fator de conversão definido.');
+            }
+
+            $preco_unit = $item->preco_unit / $produto->qt_correspondente;
+            return $preco_unit;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
   private function deleteMovement($saida)
   {
     //GRAVANDO MOVIMENTAÇÃO
@@ -274,24 +314,24 @@ class SaidaList extends TPage
     $item = Item_Saida::where('saida_id', '=', $saida->id)->first();
     @$estoque = Estoque::where('produto_id', '=', $item->produto_id)->first();
 
+
     $mov->data_hora = date('Y-m-d H:i:s');
     $mov->descricao = $descricao;
     @$mov->produto_id = $estoque->produto_id;
     $mov->responsavel_id = $usuario_logado;
+    $mov->preco_unit = $item->preco_unit;
     $mov->saldo_anterior = $estoque->valor_total ?? 0;
     $mov->quantidade = $item->quantidade ?? 0;
     $mov->valor_total = $item->valor_total ?? 0;
 
     $mov->store();
   }
-  private function cancelMovement($info)
+  private function cancelMovement($info,$estoque)
   {
     try {
       TTransaction::open('sample');
       //GRAVANDO MOVIMENTAÇÃO
       $mov = new Movimentacoes();
-      $saida = new Saida($info->saida_id);
-      $estoque = Estoque::where('produto_id', '=', $saida->produto_id)->first();
 
       $usuario_logado = TSession::getValue('userid');
       $desc =  'Saida Cancelada.';
@@ -303,7 +343,6 @@ class SaidaList extends TPage
       $mov->saldo_anterior = $estoque->valor_total ?? 0;
       $mov->quantidade = $info->quantidade ?? 0;
       $mov->valor_total = $info->valor_total ?? 0;
-
 
       $mov->store();
       TTransaction::close();

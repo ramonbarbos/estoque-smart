@@ -380,7 +380,7 @@ class EntradaForm extends TPage
                         $item->store();
                         $total += $item->total;
                         $this->insertEstoque($item, $item->total, $quantidade_estoque, $preco_unit_estoque);
-                        $this->createMovement($item);
+                        $this->createMovement($item,$preco_unit_estoque,$quantidade_estoque);
                     }
                 }
 
@@ -510,7 +510,7 @@ class EntradaForm extends TPage
         return false;
     }
 
-    private function createMovement($info)
+    private function createMovement($info, $preco_unit,$quantidade )
     {
         try {
             TTransaction::open('sample');
@@ -522,10 +522,10 @@ class EntradaForm extends TPage
             $descricao = substr($desc, 0, 30) . '...';
             $mov->data_hora = date('Y-m-d H:i:s');
             $mov->descricao = $descricao;
-            $mov->preco_unit = $info->preco_unit;
+            $mov->preco_unit = $preco_unit;
             $mov->produto_id = $info->produto_id;
             $mov->responsavel_id = $usuario_logado;
-            $mov->quantidade = $info->quantidade;
+            $mov->quantidade = $quantidade ;
 
             $estoque = Estoque::where('produto_id', '=', $info->produto_id)->first();
             if ($estoque->valor_total > 0) {

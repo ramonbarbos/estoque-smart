@@ -209,10 +209,10 @@ class EntradaList extends TPage
             TTransaction::open('sample');
 
             $itens = Item_Entrada::where('entrada_id', '=', $entrada->id)->load();
-           
+
 
             foreach ($itens as $item) {
-                $quantidade_estoque      = $this->calcularQuant($item,$entrada );
+                $quantidade_estoque      = $this->calcularQuant($item, $entrada);
                 $produto_id = $item->produto_id;
                 $quantidade = $quantidade_estoque;
                 $totalValor = $item->total;
@@ -247,26 +247,47 @@ class EntradaList extends TPage
             throw new Exception("Erro ao atualizar o estoque: " . $e->getMessage());
         }
     }
-  
-private function calcularQuant($item, $entrada_id)
-{
-    $produto = new Produto($item->produto_id);
 
-    $fatorConversao = Fator_Convesao::where('unidade_origem', '=', $produto->unidade_id)
-        ->where('unidade_destino', '=', $produto->unidade_saida)
-        ->first();
+    private function calcularQuant($item, $entrada_id)
+    {
+        $produto = new Produto($item->produto_id);
 
-    if (!$fatorConversao) {
-         $entrada = new Entrada($entrada_id);
-         $entrada->delete();
-        throw new Exception('As unidades de medida não são compatíveis ou não há um fator de conversão definido.');
+        $fatorConversao = Fator_Convesao::where('unidade_origem', '=', $produto->unidade_id)
+            ->where('unidade_destino', '=', $produto->unidade_saida)
+            ->first();
+
+        if (!$fatorConversao) {
+            $entrada = new Entrada($entrada_id);
+            $entrada->delete();
+            throw new Exception('As unidades de medida não são compatíveis ou não há um fator de conversão definido.');
+        }
+
+        // Ajusta a quantidade para a unidade de saída usando o fator de conversão
+        $quantidadeSaida = $item->quantidade * $produto->qt_correspondente;
+
+        return $quantidadeSaida;
     }
+    private function calcularValorUnit($item, $entrada_id)
+    {
+        try {
+            $produto = new Produto($item->produto_id);
 
-    // Ajusta a quantidade para a unidade de saída usando o fator de conversão
-    $quantidadeSaida = $item->quantidade * $produto->qt_correspondente;
+            $fatorConversao = Fator_Convesao::where('unidade_origem', '=', $produto->unidade_id)
+                ->where('unidade_destino', '=', $produto->unidade_saida)
+                ->first();
 
-    return $quantidadeSaida;
-}
+            if (!$fatorConversao) {
+                $entrada = new Entrada($entrada_id);
+                $entrada->delete();
+                throw new Exception('As unidades de medida não são compatíveis ou não há um fator de conversão definido.');
+            }
+
+            $preco_unit = $item->preco_unit / $produto->qt_correspondente;
+            return $preco_unit;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
     public function onDelete($param)
     {
         try {
@@ -305,6 +326,9 @@ private function calcularQuant($item, $entrada_id)
     private function deleteMovement($entrada)
     {
         //GRAVANDO MOVIMENTAÇÃO
+
+     
+
         $mov = new Movimentacoes();
         $usuario_logado = TSession::getValue('userid');
         $descricao = 'Entrada Deletada';
@@ -312,12 +336,14 @@ private function calcularQuant($item, $entrada_id)
         $item = Item_Entrada::where('entrada_id', '=', $entrada->id)->first();
         @$estoque = Estoque::where('produto_id', '=', $item->produto_id)->first();
 
+        $quantidade_estoque      = $this->calcularQuant($item, $item->entrada_id);
+
         $mov->data_hora = date('Y-m-d H:i:s');
         $mov->descricao = $descricao;
         @$mov->produto_id = $estoque->produto_id;
         $mov->responsavel_id = $usuario_logado;
         $mov->saldo_anterior = $estoque->valor_total ?? 0;
-        $mov->quantidade = $item->quantidade ?? 0;
+        $mov->quantidade = $quantidade_estoque ?? 0;
         $mov->valor_total = $item->valor_total ?? 0;
 
         $mov->store();
@@ -332,15 +358,18 @@ private function calcularQuant($item, $entrada_id)
             $entrada = new Entrada($info->entrada_id);
             $estoque = Estoque::where('produto_id', '=', $entrada->produto_id)->first();
 
+            $preco_unit_estoque = $this->calcularValorUnit($info, $entrada);
+            $quantidade_estoque      = $this->calcularQuant($info, $entrada);
+
             $usuario_logado = TSession::getValue('userid');
             $desc =  'Entrada Cancelada.';
             $mov->data_hora = date('Y-m-d H:i:s');
             $mov->descricao = $desc;
-            $mov->preco_unit = $info->preco_unit;
+            $mov->preco_unit = $preco_unit_estoque;
             $mov->produto_id = $info->produto_id;
             $mov->responsavel_id = $usuario_logado;
             $mov->saldo_anterior = $estoque->valor_total ?? 0;
-            $mov->quantidade = $info->quantidade ?? 0;
+            $mov->quantidade = $quantidade_estoque ?? 0;
             $mov->valor_total = $info->valor_total ?? 0;
 
 

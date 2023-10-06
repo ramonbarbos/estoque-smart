@@ -285,6 +285,7 @@ class RetornoClienteList extends TPage
           $saida->store();
       }
   }
+  
   private function deleteMovement($retorno)
   {
     //GRAVANDO MOVIMENTAÇÃO
@@ -298,6 +299,7 @@ class RetornoClienteList extends TPage
     $mov->data_hora = date('Y-m-d H:i:s');
     $mov->descricao = $descricao;
     @$mov->produto_id = $estoque->produto_id;
+    $mov->preco_unit = $item->preco_unit;
     $mov->responsavel_id = $usuario_logado;
     $mov->saldo_anterior = $estoque->valor_total ?? 0;
     $mov->quantidade = $item->quantidade_retorno ?? 0;
