@@ -303,12 +303,17 @@ class EntradaForm extends TPage
 
                 $object = new Entrada($key);
                 $entrada_items = Item_Entrada::where('entrada_id', '=', $object->id)->load();
+                $entradaItem = Item_Entrada::where('entrada_id', '=', $object->id)->first();
+                $saidaItem = Item_Saida::where('produto_id', '=', $entradaItem->produto_id)->first();
                 $this->form->getField('produto_id')->setEditable(false);
                 $this->form->getField('quantidade')->setEditable(false);
                 $this->form->getField('preco_unit')->setEditable(false);
 
                 if ($object->status == 0) {
                     $alert = new TAlert('warning', 'Entrada foi cancelada.');
+                    $alert->show();
+                }else if(isset($saidaItem)){
+                    $alert = new TAlert('warning', 'Existe Saida vinculada.');
                     $alert->show();
                 }
 
