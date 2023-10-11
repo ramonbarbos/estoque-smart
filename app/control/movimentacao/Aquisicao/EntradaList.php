@@ -177,7 +177,7 @@ class EntradaList extends TPage
                     $itemEntrada = Item_Entrada::where('entrada_id', '=', $entrada->id)->first();
                     @$saida = Item_Saida::where('produto_id', '=', $itemEntrada->produto_id)->first();
 
-                    if ($saida) {
+                    if (isset($saida)) {
                         throw new Exception("Não foi possivel cancelar, verifique saidas.", $this->afterSaveAction);
                     }
 
