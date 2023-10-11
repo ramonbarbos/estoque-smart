@@ -18,15 +18,15 @@
     <menu>
       <menuitem label="Mapa de Estoque">
         <action>EstoqueList</action>
-        <icon>fa fa fa-fw fa-fw</icon>
+        <icon>fas:map fa-fw fa-fw</icon>
       </menuitem>
       <menuitem label="Aquisição">
         <action>EntradaList</action>
-        <icon>fas:cart-arrow-down fa-fw fa-fw</icon>
+        <icon>fas:cart-plus fa-fw fa-fw</icon>
       </menuitem>
       <menuitem label="Saida">
         <action>SaidaList</action>
-        <icon>fa fa fa-fw fa-fw</icon>
+        <icon>fas:cart-arrow-down fa-fw fa-fw</icon>
       </menuitem>
       <menuitem label="Devolução Fornecedor">
         <action>RetornoFornecedorList</action>
@@ -34,7 +34,7 @@
       </menuitem>
       <menuitem label="Retorno Saida">
         <action>RetornoClienteList</action>
-        <icon>fa fa fa-fw fa-fw</icon>
+        <icon>fas:luggage-cart fa-fw fa-fw</icon>
       </menuitem>
     </menu>
   </menuitem>
@@ -74,7 +74,7 @@
         <action>UnidadesMedidaList</action>
         <icon>fa fa fa-fw fa-fw</icon>
       </menuitem>
-       <menuitem label="Fator Conversão">
+      <menuitem label="Fator Conversão">
         <action>FatorConvesaoList</action>
         <icon>fa fa fa-fw fa-fw</icon>
       </menuitem>
