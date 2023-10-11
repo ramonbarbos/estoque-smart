@@ -169,7 +169,7 @@ class SaidaList extends TPage
         TTransaction::open('sample');
 
         $saida = new Saida($id);
-        @$retorno = Retorno_Cliente::where('saida_id', '=', $saida->id)->first();
+        $retorno = Retorno_Cliente::where('saida_id', '=', $saida->id)->load();
 
         if (isset($retorno)) {
           throw new Exception("Não foi possivel cancelar, verifique retorno.");
