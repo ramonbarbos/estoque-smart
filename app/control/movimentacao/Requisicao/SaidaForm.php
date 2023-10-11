@@ -84,6 +84,7 @@ class SaidaForm extends TPage
 
         $criteria_prod = new TCriteria();
         $criteria_prod->setProperty('order', 'id');
+        $criteria_prod->add(new TFilter('quantidade', '>', 0));
         $produto_id = new TDBUniqueSearch('produto_id', 'sample', 'Estoque', 'produto_id', 'produto_id', null, $criteria_prod);
         $produto_id->setChangeAction(new TAction([$this, 'onProductChange']));
         $produto_id->setMask('{produto->nome} ({quantidade} disponíveis)');
@@ -356,10 +357,12 @@ class SaidaForm extends TPage
 
             $saida = new Saida;
             $saida->fromArray((array) $data);
+           
 
             if ($this->hasNegativeValues($param['products_list_quantidade']) || $this->hasNegativeValues($param['products_list_preco_unit'])) {
                 throw new Exception('Não é permitido inserir valores negativos em quantidade ou preço unitário.');
             }
+           
             if (!empty($saida->id)) {
                 new TMessage('warning', 'Esta Saida já foi salva.', $this->afterSaveAction);
             } else {
@@ -378,8 +381,14 @@ class SaidaForm extends TPage
                         $item->preco_unit  = (float) $param['products_list_preco_unit'][$key];
                         $item->quantidade      = (float) $param['products_list_quantidade'][$key];
                         $item->total       =  $item->preco_unit * $item->quantidade;
-
                         $item->saida_id = $saida->id;
+
+                        $estoque = Estoque::where('produto_id','=',$item->produto_id)->first();
+                        if(!$estoque ||$item->quantidade > $estoque->quantidade){
+                            $saida = new Saida($item->saida_id);
+                            $saida->delete();
+                            throw new Exception('Valor solicitado é maior que a quantidade disponivel.');
+                        }
                         $item->store();
                         $total += $item->total;
                         $quantidadeTotal += $item->quantidade;
@@ -387,7 +396,7 @@ class SaidaForm extends TPage
                         $this->createMovement($item);
                     }
                 }
-
+           
                 $saida->quantidade_total = $quantidadeTotal;
                 $saida->valor_total = $total;
                 $saida->created_at = date('Y-m-d H:i:s');

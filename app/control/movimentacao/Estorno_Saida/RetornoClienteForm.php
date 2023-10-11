@@ -443,7 +443,7 @@ class RetornoClienteForm extends TPage
                         if (!$itemSaida || $item->quantidade_retorno > $itemSaida->quantidade) {
                             $delete = new Retorno_Cliente($retorno->id);
                             $delete->delete();
-                            throw new Exception('Não é permitido inserir valores maior que a quantidade baixada ou o item não existe na saída.');
+                            throw new Exception('Não é permitido inserir valores maiores que a quantidade baixada ou o item não existe na saída.');
                         }
                         if(empty($item->quantidade_retorno )){
                             $delete = new Retorno_Cliente($retorno->id);
