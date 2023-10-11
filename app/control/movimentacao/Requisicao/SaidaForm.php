@@ -468,7 +468,7 @@ class SaidaForm extends TPage
             $mov = new Movimentacoes();
             $saida = new Saida($info->saida_id);
             $usuario_logado = TSession::getValue('userid');
-            $desc =  $saida->tipo->nome . ' - ' . $saida->cliente->nome;
+            $desc =  'Baixa Cadastrada' ;
             $descricao = substr($desc, 0, 30) . '...';
             $mov->data_hora = date('Y-m-d H:i:s');
             $mov->descricao = $descricao;

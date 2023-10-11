@@ -178,22 +178,23 @@ class EntradaList extends TPage
                     @$saida = Item_Saida::where('produto_id', '=', $itemEntrada->produto_id)->first();
 
                     if (isset($saida)) {
-                        throw new Exception("Não foi possivel cancelar, verifique saidas.", $this->afterSaveAction);
+                        throw new Exception("Não foi possivel cancelar, verifique saidas.");
+                    }else{
+                        if ($entrada->status == 1) {
+                            $entrada->status = 0;
+    
+                            $this->cancelEstoque($entrada);
+                            $entrada->store();
+    
+                            TTransaction::close();
+    
+                            new TMessage('info', 'Entrada Cancelada.', $this->afterSaveAction);
+                            $this->onReload([]);
+                        } else {
+                            throw new Exception("A entrada já está cancelada.");
+                        }
                     }
 
-                    if ($entrada->status == 1) {
-                        $entrada->status = 0;
-
-                        $this->cancelEstoque($entrada);
-                        $entrada->store();
-
-                        TTransaction::close();
-
-                        new TMessage('info', 'Entrada Cancelada.', $this->afterSaveAction);
-                        $this->onReload([]);
-                    } else {
-                        throw new Exception("A entrada já está cancelada.");
-                    }
                 } else {
                     throw new Exception("Entrada não encontrada.");
                 }

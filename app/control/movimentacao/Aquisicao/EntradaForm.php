@@ -523,7 +523,7 @@ class EntradaForm extends TPage
             $mov = new Movimentacoes();
             $entrada = new Entrada($info->entrada_id);
             $usuario_logado = TSession::getValue('userid');
-            $desc =  $entrada->tipo->nome . ' - ' . $entrada->fornecedor->nome;
+            $desc =  'Aquisição Cadastrada' ;
             $descricao = substr($desc, 0, 30) . '...';
             $mov->data_hora = date('Y-m-d H:i:s');
             $mov->descricao = $descricao;

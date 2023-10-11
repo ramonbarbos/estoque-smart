@@ -99,14 +99,13 @@ class SaidaList extends TPage
     $column_total->setTransformer($formato_valor);
 
     $column_status->setTransformer(function ($value, $object, $row) {
-      if($value == 0){
+      if ($value == 0) {
         return "<span style='color:red'>Cancelado</span>";
-      } else if($value == 1){
-        return  "<span style='color:green'>Baixado</span>"  ;
-      } else if($value == 2){
+      } else if ($value == 1) {
+        return  "<span style='color:green'>Baixado</span>";
+      } else if ($value == 2) {
         return "<span style='color:orange'>Estornado</span>";
       }
-     
     });
     //add coluna da datagrid
     $this->datagrid->addColumn($column_id);
@@ -170,26 +169,30 @@ class SaidaList extends TPage
         TTransaction::open('sample');
 
         $saida = new Saida($id);
+        @$retorno = Retorno_Cliente::where('saida_id', '=', $saida->id)->first();
 
-        if ($saida) {
-          if ($saida->status == 1 ) {
-            $saida->status = 0;
-
-            $this->cancelEstoque($saida);
-            $saida->store();
-
-            TTransaction::close();
-
-            new TMessage('info', 'Saida Cancelada.', $this->afterSaveAction);
-            $this->onReload([]);
-          } else if($saida->status == 2) {
-            throw new Exception("A saida foi estornada. Verifique Estorno Cliente.");
-          }else{
-            throw new Exception("A saida foi cancelada.");
-
-          }
+        if (isset($retorno)) {
+          throw new Exception("Não foi possivel cancelar, verifique retorno.");
         } else {
-          throw new Exception("Saida não encontrada.");
+          if ($saida) {
+            if ($saida->status == 1) {
+              $saida->status = 0;
+
+              $this->cancelEstoque($saida);
+              $saida->store();
+
+              TTransaction::close();
+
+              new TMessage('info', 'Saida Cancelada.', $this->afterSaveAction);
+              $this->onReload([]);
+            } else if ($saida->status == 2) {
+              throw new Exception("A saida foi estornada. Verifique Estorno Cliente.");
+            } else {
+              throw new Exception("A saida foi cancelada.");
+            }
+          } else {
+            throw new Exception("Saida não encontrada.");
+          }
         }
       }
     } catch (Exception $e) {
@@ -232,7 +235,6 @@ class SaidaList extends TPage
 
           $estoque->store();
           $this->cancelMovement($item, $estoque);
-
         }
       }
       TTransaction::close();
@@ -265,45 +267,45 @@ class SaidaList extends TPage
     }
   }
   private function calcularQuant($item, $saida_id)
-    {
-        $produto = new Produto($item->produto_id);
+  {
+    $produto = new Produto($item->produto_id);
 
-        $fatorConversao = Fator_Convesao::where('unidade_origem', '=', $produto->unidade_id)
-            ->where('unidade_destino', '=', $produto->unidade_saida)
-            ->first();
+    $fatorConversao = Fator_Convesao::where('unidade_origem', '=', $produto->unidade_id)
+      ->where('unidade_destino', '=', $produto->unidade_saida)
+      ->first();
 
-        if (!$fatorConversao) {
-            $saida = new Saida($saida_id);
-            $saida->delete();
-            throw new Exception('As unidades de medida não são compatíveis ou não há um fator de conversão definido.');
-        }
-
-        // Ajusta a quantidade para a unidade de saída usando o fator de conversão
-        $quantidadeSaida = $item->quantidade * $produto->qt_correspondente;
-
-        return $quantidadeSaida;
+    if (!$fatorConversao) {
+      $saida = new Saida($saida_id);
+      $saida->delete();
+      throw new Exception('As unidades de medida não são compatíveis ou não há um fator de conversão definido.');
     }
-    private function calcularValorUnit($item, $saida_id)
-    {
-        try {
-            $produto = new Produto($item->produto_id);
 
-            $fatorConversao = Fator_Convesao::where('unidade_origem', '=', $produto->unidade_id)
-                ->where('unidade_destino', '=', $produto->unidade_saida)
-                ->first();
+    // Ajusta a quantidade para a unidade de saída usando o fator de conversão
+    $quantidadeSaida = $item->quantidade * $produto->qt_correspondente;
 
-            if (!$fatorConversao) {
-                $saida = new Saida($saida_id);
-                $saida->delete();
-                throw new Exception('As unidades de medida não são compatíveis ou não há um fator de conversão definido.');
-            }
+    return $quantidadeSaida;
+  }
+  private function calcularValorUnit($item, $saida_id)
+  {
+    try {
+      $produto = new Produto($item->produto_id);
 
-            $preco_unit = $item->preco_unit / $produto->qt_correspondente;
-            return $preco_unit;
-        } catch (Exception $e) {
-            throw $e;
-        }
+      $fatorConversao = Fator_Convesao::where('unidade_origem', '=', $produto->unidade_id)
+        ->where('unidade_destino', '=', $produto->unidade_saida)
+        ->first();
+
+      if (!$fatorConversao) {
+        $saida = new Saida($saida_id);
+        $saida->delete();
+        throw new Exception('As unidades de medida não são compatíveis ou não há um fator de conversão definido.');
+      }
+
+      $preco_unit = $item->preco_unit / $produto->qt_correspondente;
+      return $preco_unit;
+    } catch (Exception $e) {
+      throw $e;
     }
+  }
   private function deleteMovement($saida)
   {
     //GRAVANDO MOVIMENTAÇÃO
@@ -326,7 +328,7 @@ class SaidaList extends TPage
 
     $mov->store();
   }
-  private function cancelMovement($info,$estoque)
+  private function cancelMovement($info, $estoque)
   {
     try {
       TTransaction::open('sample');
