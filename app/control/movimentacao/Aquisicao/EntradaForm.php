@@ -467,7 +467,6 @@ class EntradaForm extends TPage
 
             // Atualizar ou inserir o registro de estoque
             if ($estoque) {
-                var_dump($estoque->quantidade);
                 if ($estoque->quantidade != $quantidade || $estoque->preco_unit != $item->preco_unit) {
 
                     $estoque->quantidade += $quantidade;

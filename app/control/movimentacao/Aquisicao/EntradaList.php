@@ -179,22 +179,21 @@ class EntradaList extends TPage
 
                     if (isset($saida)) {
                         throw new Exception("Não foi possivel cancelar, verifique saidas.");
-                    }else{
+                    } else {
                         if ($entrada->status == 1) {
                             $entrada->status = 0;
-    
+
                             $this->cancelEstoque($entrada);
                             $entrada->store();
-    
+
                             TTransaction::close();
-    
+
                             new TMessage('info', 'Entrada Cancelada.', $this->afterSaveAction);
                             $this->onReload([]);
                         } else {
                             throw new Exception("A entrada já está cancelada.");
                         }
                     }
-
                 } else {
                     throw new Exception("Entrada não encontrada.");
                 }
@@ -300,11 +299,22 @@ class EntradaList extends TPage
                 $entrada = new Entrada($id);
 
                 if ($entrada->status == 0) {
-
-
-
                     if ($entrada) {
+                        // Verifique se esta é a última entrada relacionada ao estoque
+
+                        $itemEntrada = Item_Entrada::where('entrada_id', '=', $entrada->id)->first();
+                        $estoque = Estoque::where('produto_id', '=', $itemEntrada->produto_id)->first();
                         $this->deleteMovement($entrada);
+                        if ($itemEntrada && $estoque) {
+
+                            $outrasEntradas = Item_Entrada::where('produto_id', '=', $itemEntrada->produto_id)->count();
+    
+                                if ($outrasEntradas == 1) {
+                                    // Esta é a última entrada, então exclua o estoque
+                                    $estoque = new Estoque($estoque->id);
+                                    $estoque->delete();
+                                }
+                            }
                         Item_Entrada::where('entrada_id', '=', $entrada->id)->delete();
                         $entrada->delete();
 
@@ -328,7 +338,7 @@ class EntradaList extends TPage
     {
         //GRAVANDO MOVIMENTAÇÃO
 
-     
+
 
         $mov = new Movimentacoes();
         $usuario_logado = TSession::getValue('userid');
